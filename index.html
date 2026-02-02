@@ -1437,13 +1437,13 @@
                         longPressTimer = null;
                     }
                     
-                    if (!card || AppState.batchMode || pressCardId !== card.dataset.id) {
+                    // 如果已经触发了长按，不执行点击操作
+                    if (isLongPress) {
                         pressCardId = null;
                         return;
                     }
-
-                    // 如果已经触发了长按，不执行点击操作
-                    if (isLongPress) {
+                    
+                    if (!card || AppState.batchMode || pressCardId !== card.dataset.id) {
                         pressCardId = null;
                         return;
                     }
