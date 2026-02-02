@@ -1389,88 +1389,79 @@
                 document.getElementById('prevDate').addEventListener('click', () => this.changeDate(-1));
                 document.getElementById('nextDate').addEventListener('click', () => this.changeDate(1));
 
-                // 学生卡片点击 - 点击切换状态，长按打开评分（统一处理桌面和触摸）
-                let longPressTimer = null;
-                let pressTarget = null;
-                let touchMoved = false;
+                // 学生卡片交互 - 点击切换状态，长按打开评分
+                let pressStartTime = 0;
+                let pressCardId = null;
+                let isLongPress = false;
                 let touchStartY = 0;
                 let touchStartX = 0;
                 const LONG_PRESS_DURATION = 500;
-                const SCROLL_THRESHOLD = 10;
+                const SCROLL_THRESHOLD = 8;
 
-                function handlePressStart(e) {
+                // 统一处理所有输入设备（鼠标、触摸、触控笔）
+                studentGrid.addEventListener('pointerdown', (e) => {
                     const card = e.target.closest('.student-card');
                     if (!card || AppState.batchMode) return;
-                    if (e.type === 'mousedown' && e.button !== 0) return;
+                    if (e.pointerType === 'mouse' && e.button !== 0) return;
 
-                    pressTarget = card;
-                    touchMoved = false;
-                    if (e.type === 'touchstart') {
-                        touchStartY = e.touches[0].clientY;
-                        touchStartX = e.touches[0].clientX;
+                    pressStartTime = Date.now();
+                    pressCardId = card.dataset.id;
+                    isLongPress = false;
+                    
+                    if (e.pointerType === 'touch') {
+                        touchStartY = e.clientY;
+                        touchStartX = e.clientX;
                     }
-                    longPressTimer = setTimeout(() => {
-                        const studentId = card.dataset.id;
-                        const student = AppState.data.students.find(s => s.id === studentId);
-                        if (student) UI.showScoreModal(student);
-                        pressTarget = null;
-                        touchMoved = true;
-                    }, LONG_PRESS_DURATION);
-                }
 
-                function handlePressEnd(e) {
-                    if (longPressTimer) {
-                        clearTimeout(longPressTimer);
-                        longPressTimer = null;
-                    }
-                    if (!pressTarget || touchMoved) {
-                        pressTarget = null;
+                    card.setPointerCapture(e.pointerId);
+                });
+
+                studentGrid.addEventListener('pointerup', (e) => {
+                    const card = e.target.closest('.student-card');
+                    if (!card || AppState.batchMode || pressCardId !== card.dataset.id) {
+                        pressCardId = null;
                         return;
                     }
-                    // 标记已处理触摸事件，防止浏览器合成 click 重复触发
-                    pressTarget.dataset.touchProcessed = 'true';
-                    const studentId = pressTarget.dataset.id;
-                    const student = AppState.data.students.find(s => s.id === studentId);
-                    if (student) {
-                        const record = AppState.getStudentRecord(studentId);
-                        const newStatus = record.status === 'submitted' ? 'pending' : 'submitted';
-                        AppState.setStudentRecord(studentId, { ...record, status: newStatus });
-                        UI.renderGrid();
-                    }
-                    pressTarget = null;
-                }
 
-                function handleTouchMove(e) {
-                    if (!pressTarget) return;
+                    const duration = Date.now() - pressStartTime;
+                    if (duration >= LONG_PRESS_DURATION) {
+                        isLongPress = true;
+                        const student = AppState.data.students.find(s => s.id === pressCardId);
+                        if (student) UI.showScoreModal(student);
+                    } else if (!isLongPress) {
+                        const student = AppState.data.students.find(s => s.id === pressCardId);
+                        if (student) {
+                            const record = AppState.getStudentRecord(pressCardId);
+                            const newStatus = record.status === 'submitted' ? 'pending' : 'submitted';
+                            AppState.setStudentRecord(pressCardId, { ...record, status: newStatus });
+                            UI.renderGrid();
+                        }
+                    }
+
+                    pressCardId = null;
+                });
+
+                studentGrid.addEventListener('pointercancel', (e) => {
+                    pressCardId = null;
+                });
+
+                // 触摸设备专用：检测滑动，阻止滑动时触发点击
+                studentGrid.addEventListener('touchmove', (e) => {
+                    if (!pressCardId) return;
                     const touch = e.touches[0];
                     const deltaY = Math.abs(touch.clientY - touchStartY);
                     const deltaX = Math.abs(touch.clientX - touchStartX);
                     if (deltaY > SCROLL_THRESHOLD || deltaX > SCROLL_THRESHOLD) {
-                        touchMoved = true;
-                        clearTimeout(longPressTimer);
+                        pressCardId = null;
                     }
-                }
+                }, { passive: true });
 
-                // 桌面端鼠标事件
-                studentGrid.addEventListener('mousedown', handlePressStart);
-                studentGrid.addEventListener('mouseup', handlePressEnd);
-                studentGrid.addEventListener('mouseleave', handlePressEnd);
-
-                // 触摸设备事件
-                studentGrid.addEventListener('touchstart', handlePressStart, { passive: true });
-                studentGrid.addEventListener('touchmove', handleTouchMove, { passive: true });
-                studentGrid.addEventListener('touchend', handlePressEnd);
-                studentGrid.addEventListener('touchcancel', handlePressEnd);
-
-                // 防止触摸合成的 click 事件重复触发
-                studentGrid.addEventListener('click', (e) => {
-                    const card = e.target.closest('.student-card');
-                    if (card && card.dataset.touchProcessed === 'true') {
-                        delete card.dataset.touchProcessed;
-                        e.stopImmediatePropagation();
+                // 触摸设备专用：阻止 touchend 后浏览器合成的 click 事件
+                studentGrid.addEventListener('touchend', (e) => {
+                    if (pressCardId) {
                         e.preventDefault();
-                        return;
                     }
+                    pressCardId = null;
                 });
 
                 // 防止右键菜单干扰
