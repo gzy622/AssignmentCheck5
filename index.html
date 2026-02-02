@@ -496,6 +496,76 @@
         .status-btn.pending { border-color: var(--text-secondary); color: var(--text-secondary); }
         .status-btn.pending.active { background: var(--text-secondary); color: white; }
 
+        .numpad {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            padding: 12px;
+            background: var(--bg);
+            border-radius: var(--radius);
+            margin-bottom: 12px;
+        }
+
+        .numpad-row {
+            display: flex;
+            gap: 8px;
+        }
+
+        .numpad-btn {
+            flex: 1;
+            padding: 16px 8px;
+            font-size: 22px;
+            font-weight: 600;
+            border: none;
+            border-radius: var(--radius-sm);
+            background: var(--card);
+            color: var(--text);
+            cursor: pointer;
+            transition: var(--transition);
+            touch-action: manipulation;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .numpad-btn:active {
+            transform: scale(0.95);
+            opacity: 0.8;
+        }
+
+        .numpad-btn.num {
+            background: var(--card);
+        }
+
+        .numpad-btn.numpad-func {
+            background: var(--border);
+            font-size: 20px;
+        }
+
+        .numpad-btn.numpad-action {
+            background: var(--warning);
+            color: white;
+            font-size: 16px;
+        }
+
+        .numpad-btn.numpad-primary {
+            background: var(--primary);
+            color: white;
+            font-size: 16px;
+        }
+
+        body.high-contrast .numpad-btn {
+            border: 2px solid var(--border);
+        }
+
+        body.high-contrast .numpad-btn.numpad-primary {
+            background: var(--primary);
+            color: black;
+        }
+
+        body.high-contrast .numpad-btn.numpad-action {
+            background: var(--warning);
+            color: black;
+        }
+
         /* 底部工具栏 */
         .toolbar {
             background: var(--card);
@@ -851,10 +921,38 @@
 
             <div class="settings-title">评分 (0-100，支持两位小数)</div>
             <div class="score-input-wrapper">
-                <input type="number" class="score-input" id="scoreInput" placeholder="输入分数后回车=已交" min="0" max="100" step="0.01">
+                <input type="text" class="score-input" id="scoreInput" placeholder="输入或使用下方键盘" inputmode="none" readonly onfocus="this.removeAttribute('readonly');">
                 <span class="score-unit">分</span>
             </div>
-            <div class="score-actions">
+            
+            <div class="numpad">
+                <div class="numpad-row">
+                    <button class="numpad-btn" data-action="num">1</button>
+                    <button class="numpad-btn" data-action="num">2</button>
+                    <button class="numpad-btn" data-action="num">3</button>
+                </div>
+                <div class="numpad-row">
+                    <button class="numpad-btn" data-action="num">4</button>
+                    <button class="numpad-btn" data-action="num">5</button>
+                    <button class="numpad-btn" data-action="num">6</button>
+                </div>
+                <div class="numpad-row">
+                    <button class="numpad-btn" data-action="num">7</button>
+                    <button class="numpad-btn" data-action="num">8</button>
+                    <button class="numpad-btn" data-action="num">9</button>
+                </div>
+                <div class="numpad-row">
+                    <button class="numpad-btn numpad-func" data-action="decimal">.</button>
+                    <button class="numpad-btn" data-action="num">0</button>
+                    <button class="numpad-btn numpad-func" data-action="backspace">⌫</button>
+                </div>
+                <div class="numpad-row">
+                    <button class="numpad-btn numpad-action" data-action="clear">清除</button>
+                    <button class="numpad-btn numpad-primary" data-action="confirm">确定</button>
+                </div>
+            </div>
+            
+            <div class="score-actions" style="margin-top: 12px;">
                 <button class="btn" id="clearScoreBtn">清除分数</button>
                 <button class="btn" id="closeModalBtn">关闭</button>
             </div>
@@ -1400,8 +1498,10 @@
                             UI.showToast('已取消登记');
                         } else {
                             // 正常状态更新（包含分数）
+                            const statusMap = { submitted: '已交', late: '迟交', missing: '未交' };
+                            const statusText = statusMap[status] || status;
                             AppState.setStudentRecord(studentId, { status, score });
-                            UI.showToast(score !== null ? `已登记: ${status} ${score}分` : `已登记: ${status}`);
+                            UI.showToast(score !== null ? `已登记: ${statusText} ${score}分` : `已登记: ${statusText}`);
                         }
                         
                         UI.renderGrid();
@@ -1411,9 +1511,9 @@
 
                 // 分数输入
                 const scoreInput = document.getElementById('scoreInput');
-                if (!scoreInput) return; // 防止元素不存在时出错
+                if (!scoreInput) return;
                 
-                // 限制输入范围
+                // 限制输入范围（用于系统输入法输入的情况）
                 scoreInput.addEventListener('input', (e) => {
                     let value = e.target.value;
                     
@@ -1433,8 +1533,8 @@
                     
                     // 限制范围 0-100
                     const numValue = parseFloat(value);
-                    if (numValue > 100) {
-                        value = '100';
+                    if (isNaN(numValue) || numValue > 100) {
+                        value = '';
                     }
                     
                     e.target.value = value;
@@ -1448,6 +1548,53 @@
                 clearScoreBtn.addEventListener('click', () => {
                     scoreInput.value = '';
                     scoreInput.focus();
+                });
+
+                // 数字键盘事件处理
+                document.querySelectorAll('.numpad-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        const action = btn.dataset.action;
+                        let value = scoreInput.value || '';
+
+                        if (action === 'num') {
+                            const num = btn.textContent;
+                            if (value.length < 6) {
+                                if (value === '0' && num !== '0') {
+                                    value = num;
+                                } else if (value !== '0' || num === '.') {
+                                    value += num;
+                                }
+                            }
+                        } else if (action === 'decimal') {
+                            if (!value.includes('.')) {
+                                value += value === '' ? '0.' : '.';
+                            }
+                        } else if (action === 'backspace') {
+                            value = value.slice(0, -1);
+                        } else if (action === 'clear') {
+                            value = '';
+                        } else if (action === 'confirm') {
+                            if (value !== '') {
+                                const num = parseFloat(value);
+                                if (num > 100) value = '100';
+                            }
+                            scoreInput.value = value;
+                            // 触发保存逻辑
+                            if (!AppState.selectedStudent) return;
+                            const score = value === '' ? null : parseFloat(value);
+                            if (score !== null && (isNaN(score) || score < 0 || score > 100)) {
+                                UI.showToast('请输入0-100之间的数字');
+                                return;
+                            }
+                            AppState.setStudentRecord(AppState.selectedStudent.id, { status: 'submitted', score });
+                            UI.renderGrid();
+                            UI.showToast(score !== null ? `已登记: 已交 ${score}分` : '已登记: 已交');
+                            UI.hideScoreModal();
+                            return;
+                        }
+
+                        scoreInput.value = value;
+                    });
                 });
 
                 // 关闭按钮
