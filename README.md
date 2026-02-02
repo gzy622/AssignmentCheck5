@@ -28,7 +28,7 @@
 ## 文件结构
 
 ```
-psa.html          # 主应用（HTML + CSS + JS）
+index.html          # 主应用（HTML + CSS + JS）
 ├── <head>        # 样式定义
 │   └── CSS       # 约 900 行（布局、组件、主题）
 ├── <body>
@@ -45,4 +45,4 @@ psa.html          # 主应用（HTML + CSS + JS）
 
 ## 使用
 
-浏览器打开 `psa.html` 即可使用。
+浏览器打开 `index.html` 即可使用。
