@@ -1290,19 +1290,29 @@
                 // 学生卡片点击 - 点击切换状态，长按打开评分（统一处理桌面和触摸）
                 let longPressTimer = null;
                 let pressTarget = null;
+                let touchMoved = false;
+                let touchStartY = 0;
+                let touchStartX = 0;
                 const LONG_PRESS_DURATION = 500;
+                const SCROLL_THRESHOLD = 10;
 
                 function handlePressStart(e) {
                     const card = e.target.closest('.student-card');
                     if (!card || AppState.batchMode) return;
-                    if (e.type === 'mousedown' && e.button !== 0) return; // 只响应左键
+                    if (e.type === 'mousedown' && e.button !== 0) return;
 
                     pressTarget = card;
+                    touchMoved = false;
+                    if (e.type === 'touchstart') {
+                        touchStartY = e.touches[0].clientY;
+                        touchStartX = e.touches[0].clientX;
+                    }
                     longPressTimer = setTimeout(() => {
                         const studentId = card.dataset.id;
                         const student = AppState.data.students.find(s => s.id === studentId);
                         if (student) UI.showScoreModal(student);
                         pressTarget = null;
+                        touchMoved = true;
                     }, LONG_PRESS_DURATION);
                 }
 
@@ -1311,8 +1321,10 @@
                         clearTimeout(longPressTimer);
                         longPressTimer = null;
                     }
-                    // 如果已经触发了长按（pressTarget 为 null），不执行点击逻辑
-                    if (!pressTarget) return;
+                    if (!pressTarget || touchMoved) {
+                        pressTarget = null;
+                        return;
+                    }
                     const studentId = pressTarget.dataset.id;
                     const student = AppState.data.students.find(s => s.id === studentId);
                     if (student) {
@@ -1324,6 +1336,17 @@
                     pressTarget = null;
                 }
 
+                function handleTouchMove(e) {
+                    if (!pressTarget) return;
+                    const touch = e.touches[0];
+                    const deltaY = Math.abs(touch.clientY - touchStartY);
+                    const deltaX = Math.abs(touch.clientX - touchStartX);
+                    if (deltaY > SCROLL_THRESHOLD || deltaX > SCROLL_THRESHOLD) {
+                        touchMoved = true;
+                        clearTimeout(longPressTimer);
+                    }
+                }
+
                 // 桌面端鼠标事件
                 studentGrid.addEventListener('mousedown', handlePressStart);
                 studentGrid.addEventListener('mouseup', handlePressEnd);
@@ -1331,7 +1354,9 @@
 
                 // 触摸设备事件
                 studentGrid.addEventListener('touchstart', handlePressStart, { passive: true });
+                studentGrid.addEventListener('touchmove', handleTouchMove, { passive: true });
                 studentGrid.addEventListener('touchend', handlePressEnd);
+                studentGrid.addEventListener('touchcancel', handlePressEnd);
 
                 // 防止右键菜单干扰
                 studentGrid.addEventListener('contextmenu', (e) => {
