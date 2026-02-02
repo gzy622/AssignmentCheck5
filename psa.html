@@ -1287,42 +1287,57 @@
                 document.getElementById('prevDate').addEventListener('click', () => this.changeDate(-1));
                 document.getElementById('nextDate').addEventListener('click', () => this.changeDate(1));
 
-                // 学生卡片点击
-                document.getElementById('studentGrid').addEventListener('click', (e) => {
-                    const card = e.target.closest('.student-card');
-                    if (!card) return;
+                // 学生卡片点击 - 点击切换状态，长按打开评分（统一处理桌面和触摸）
+                let longPressTimer = null;
+                let pressTarget = null;
+                const LONG_PRESS_DURATION = 500;
 
-                    const studentId = card.dataset.id;
-                    const student = AppState.data.students.find(s => s.id === studentId);
-                    if (!student) return;
-
-                    if (AppState.batchMode) {
-                        // 批量模式：快速切换提交状态
-                        const record = AppState.getStudentRecord(studentId);
-                        const newStatus = record.status === 'submitted' ? 'pending' : 'submitted';
-                        AppState.setStudentRecord(studentId, { ...record, status: newStatus });
-                        UI.renderGrid();
-                    } else {
-                        // 普通模式：打开评分弹窗
-                        UI.showScoreModal(student);
-                    }
-                });
-
-                // 长按检测（用于快速评分）
-                let longPressTimer;
-                document.getElementById('studentGrid').addEventListener('touchstart', (e) => {
+                function handlePressStart(e) {
                     const card = e.target.closest('.student-card');
                     if (!card || AppState.batchMode) return;
-                    
+                    if (e.type === 'mousedown' && e.button !== 0) return; // 只响应左键
+
+                    pressTarget = card;
                     longPressTimer = setTimeout(() => {
                         const studentId = card.dataset.id;
                         const student = AppState.data.students.find(s => s.id === studentId);
                         if (student) UI.showScoreModal(student);
-                    }, 500);
-                });
+                        pressTarget = null;
+                    }, LONG_PRESS_DURATION);
+                }
 
-                document.getElementById('studentGrid').addEventListener('touchend', () => {
-                    clearTimeout(longPressTimer);
+                function handlePressEnd(e) {
+                    if (longPressTimer) {
+                        clearTimeout(longPressTimer);
+                        longPressTimer = null;
+                    }
+                    // 如果已经触发了长按（pressTarget 为 null），不执行点击逻辑
+                    if (!pressTarget) return;
+                    const studentId = pressTarget.dataset.id;
+                    const student = AppState.data.students.find(s => s.id === studentId);
+                    if (student) {
+                        const record = AppState.getStudentRecord(studentId);
+                        const newStatus = record.status === 'submitted' ? 'pending' : 'submitted';
+                        AppState.setStudentRecord(studentId, { ...record, status: newStatus });
+                        UI.renderGrid();
+                    }
+                    pressTarget = null;
+                }
+
+                // 桌面端鼠标事件
+                studentGrid.addEventListener('mousedown', handlePressStart);
+                studentGrid.addEventListener('mouseup', handlePressEnd);
+                studentGrid.addEventListener('mouseleave', handlePressEnd);
+
+                // 触摸设备事件
+                studentGrid.addEventListener('touchstart', handlePressStart, { passive: true });
+                studentGrid.addEventListener('touchend', handlePressEnd);
+
+                // 防止右键菜单干扰
+                studentGrid.addEventListener('contextmenu', (e) => {
+                    if (e.target.closest('.student-card')) {
+                        e.preventDefault();
+                    }
                 });
 
                 // 评分弹窗
