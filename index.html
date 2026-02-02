@@ -426,8 +426,10 @@
 
         .score-input {
             flex: 1;
-            padding: 16px;
-            font-size: 32px;
+            min-width: 0;
+            max-width: 100%;
+            padding: 12px 8px;
+            font-size: 24px;
             font-weight: 600;
             text-align: center;
             border: 2px solid var(--border);
@@ -436,6 +438,9 @@
             color: var(--text);
             outline: none;
             transition: var(--transition);
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
         }
 
         .score-input:focus {
@@ -921,7 +926,7 @@
 
             <div class="settings-title">评分 (0-100，支持两位小数)</div>
             <div class="score-input-wrapper">
-                <input type="text" class="score-input" id="scoreInput" placeholder="输入或使用下方键盘" inputmode="none" readonly onfocus="this.removeAttribute('readonly');">
+                <input type="text" class="score-input" id="scoreInput" placeholder="输入或点键盘" inputmode="none" readonly onfocus="this.removeAttribute('readonly');">
                 <span class="score-unit">分</span>
             </div>
             
@@ -1334,7 +1339,6 @@
                 const scoreInput = document.getElementById('scoreInput');
                 if (scoreInput) {
                     scoreInput.value = record.score !== null && record.score !== undefined ? record.score : '';
-                    setTimeout(() => scoreInput.focus(), 100);
                 }
                 
                 document.getElementById('scoreModal').classList.add('show');
