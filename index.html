@@ -362,8 +362,10 @@
             background: var(--card);
             width: 100%;
             max-width: 480px;
+            max-height: 85vh;
+            overflow-y: auto;
             border-radius: var(--radius) var(--radius) 0 0;
-            padding: 20px;
+            padding: 16px;
             transform: translateY(100%);
             transition: transform 0.2s ease;
         }
@@ -1393,6 +1395,7 @@
                 let pressStartTime = 0;
                 let pressCardId = null;
                 let isLongPress = false;
+                let longPressTimer = null;
                 let touchStartY = 0;
                 let touchStartX = 0;
                 const LONG_PRESS_DURATION = 500;
@@ -1414,34 +1417,54 @@
                     }
 
                     card.setPointerCapture(e.pointerId);
+
+                    // 启动长按定时器，到达时间自动弹出评分弹窗
+                    longPressTimer = setTimeout(() => {
+                        isLongPress = true;
+                        const student = AppState.data.students.find(s => s.id === pressCardId);
+                        if (student) {
+                            UI.showScoreModal(student);
+                        }
+                    }, LONG_PRESS_DURATION);
                 });
 
                 studentGrid.addEventListener('pointerup', (e) => {
                     const card = e.target.closest('.student-card');
+                    
+                    // 清除长按定时器
+                    if (longPressTimer) {
+                        clearTimeout(longPressTimer);
+                        longPressTimer = null;
+                    }
+                    
                     if (!card || AppState.batchMode || pressCardId !== card.dataset.id) {
                         pressCardId = null;
                         return;
                     }
 
-                    const duration = Date.now() - pressStartTime;
-                    if (duration >= LONG_PRESS_DURATION) {
-                        isLongPress = true;
-                        const student = AppState.data.students.find(s => s.id === pressCardId);
-                        if (student) UI.showScoreModal(student);
-                    } else if (!isLongPress) {
-                        const student = AppState.data.students.find(s => s.id === pressCardId);
-                        if (student) {
-                            const record = AppState.getStudentRecord(pressCardId);
-                            const newStatus = record.status === 'submitted' ? 'pending' : 'submitted';
-                            AppState.setStudentRecord(pressCardId, { ...record, status: newStatus });
-                            UI.renderGrid();
-                        }
+                    // 如果已经触发了长按，不执行点击操作
+                    if (isLongPress) {
+                        pressCardId = null;
+                        return;
+                    }
+
+                    // 短按：切换状态
+                    const student = AppState.data.students.find(s => s.id === pressCardId);
+                    if (student) {
+                        const record = AppState.getStudentRecord(pressCardId);
+                        const newStatus = record.status === 'submitted' ? 'pending' : 'submitted';
+                        AppState.setStudentRecord(pressCardId, { ...record, status: newStatus });
+                        UI.renderGrid();
                     }
 
                     pressCardId = null;
                 });
 
                 studentGrid.addEventListener('pointercancel', (e) => {
+                    if (longPressTimer) {
+                        clearTimeout(longPressTimer);
+                        longPressTimer = null;
+                    }
                     pressCardId = null;
                 });
 
@@ -1452,6 +1475,11 @@
                     const deltaY = Math.abs(touch.clientY - touchStartY);
                     const deltaX = Math.abs(touch.clientX - touchStartX);
                     if (deltaY > SCROLL_THRESHOLD || deltaX > SCROLL_THRESHOLD) {
+                        // 滑动时取消长按和点击
+                        if (longPressTimer) {
+                            clearTimeout(longPressTimer);
+                            longPressTimer = null;
+                        }
                         pressCardId = null;
                     }
                 }, { passive: true });
