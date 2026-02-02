@@ -1427,6 +1427,8 @@
                         pressTarget = null;
                         return;
                     }
+                    // 标记已处理触摸事件，防止浏览器合成 click 重复触发
+                    pressTarget.dataset.touchProcessed = 'true';
                     const studentId = pressTarget.dataset.id;
                     const student = AppState.data.students.find(s => s.id === studentId);
                     if (student) {
@@ -1459,6 +1461,17 @@
                 studentGrid.addEventListener('touchmove', handleTouchMove, { passive: true });
                 studentGrid.addEventListener('touchend', handlePressEnd);
                 studentGrid.addEventListener('touchcancel', handlePressEnd);
+
+                // 防止触摸合成的 click 事件重复触发
+                studentGrid.addEventListener('click', (e) => {
+                    const card = e.target.closest('.student-card');
+                    if (card && card.dataset.touchProcessed === 'true') {
+                        delete card.dataset.touchProcessed;
+                        e.stopImmediatePropagation();
+                        e.preventDefault();
+                        return;
+                    }
+                });
 
                 // 防止右键菜单干扰
                 studentGrid.addEventListener('contextmenu', (e) => {
