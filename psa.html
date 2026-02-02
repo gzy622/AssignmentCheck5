@@ -1,0 +1,1564 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>作业提交追踪工具 PSA</title>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --success: #22c55e;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --bg: #f8fafc;
+            --card: #ffffff;
+            --text: #1e293b;
+            --text-secondary: #64748b;
+            --border: #e2e8f0;
+            --shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1);
+            --radius: 12px;
+            --radius-sm: 8px;
+            --transition: 0.15s ease;
+            --compact-size: 56px;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+            touch-action: manipulation;
+        }
+
+        html {
+            height: 100%;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            height: 100%;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 顶部进度条 - 环境感知 */
+        .ambient-progress {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--border);
+            z-index: 1000;
+        }
+
+        .ambient-progress-bar {
+            height: 100%;
+            background: linear-gradient(90deg, var(--success), var(--primary));
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        /* 头部 */
+        .header {
+            background: var(--card);
+            padding: 12px 16px;
+            box-shadow: var(--shadow);
+            z-index: 100;
+            flex-shrink: 0;
+        }
+
+        .header-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 12px;
+        }
+
+        .header-title {
+            font-size: 18px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .badge {
+            font-size: 12px;
+            padding: 2px 8px;
+            border-radius: 20px;
+            background: var(--primary);
+            color: white;
+            font-weight: 500;
+        }
+
+        .badge.success { background: var(--success); }
+        .badge.warning { background: var(--warning); }
+
+        .header-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .icon-btn {
+            width: 36px;
+            height: 36px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: var(--card);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 16px;
+            transition: var(--transition);
+        }
+
+        .icon-btn:hover { background: var(--bg); }
+        .icon-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        /* 日期选择器 */
+        .date-bar {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .date-nav {
+            width: 32px;
+            height: 32px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: var(--card);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 14px;
+            flex-shrink: 0;
+        }
+
+        .date-select {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            background: var(--card);
+            cursor: pointer;
+        }
+
+        /* 主内容区 */
+        .main {
+            flex: 1;
+            overflow-y: auto;
+            overflow-x: hidden;
+            padding: 12px;
+            -webkit-overflow-scrolling: touch;
+        }
+
+        /* 学生网格 */
+        .student-grid {
+            display: grid;
+            gap: 8px;
+            transition: var(--transition);
+        }
+
+        .student-grid.compact {
+            grid-template-columns: repeat(auto-fill, minmax(var(--compact-size), 1fr));
+        }
+
+        .student-grid.info {
+            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+        }
+
+        /* 学生卡片 */
+        .student-card {
+            background: var(--card);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            cursor: pointer;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.1s ease, box-shadow 0.1s ease;
+            user-select: none;
+            border: 2px solid transparent;
+        }
+
+        .student-card:active {
+            transform: scale(0.97);
+        }
+
+        .student-card.submitted {
+            border-color: var(--success);
+        }
+
+        .student-card.late {
+            border-color: var(--warning);
+        }
+
+        .student-card.missing {
+            border-color: var(--danger);
+        }
+
+        /* 紧凑模式卡片 */
+        .student-grid.compact .student-card {
+            aspect-ratio: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 4px;
+        }
+
+        .compact-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            margin-bottom: 4px;
+            transition: var(--transition);
+        }
+
+        .student-card.submitted .compact-avatar {
+            background: var(--success);
+            color: white;
+        }
+
+        .student-card.late .compact-avatar {
+            background: var(--warning);
+            color: white;
+        }
+
+        .compact-id {
+            font-size: 10px;
+            color: var(--text-secondary);
+            text-align: center;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%;
+        }
+
+        .compact-score {
+            position: absolute;
+            top: 2px;
+            right: 2px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            font-size: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+        }
+
+        /* 信息模式卡片 */
+        .student-grid.info .student-card {
+            padding: 12px;
+            min-height: 80px;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .info-header {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 4px;
+        }
+
+        .info-avatar {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            background: var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            flex-shrink: 0;
+        }
+
+        .student-card.submitted .info-avatar {
+            background: var(--success);
+            color: white;
+        }
+
+        .student-card.late .info-avatar {
+            background: var(--warning);
+            color: white;
+        }
+
+        .info-name {
+            font-size: 14px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .info-id {
+            font-size: 11px;
+            color: var(--text-secondary);
+        }
+
+        .info-score {
+            margin-top: auto;
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .score-badge {
+            font-size: 11px;
+            padding: 2px 6px;
+            border-radius: 4px;
+            background: var(--bg);
+            color: var(--text-secondary);
+        }
+
+        .score-badge.has-score {
+            background: var(--primary);
+            color: white;
+        }
+
+        /* 评分弹窗 */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: flex-end;
+            justify-content: center;
+            z-index: 1000;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.2s ease, visibility 0.2s ease;
+        }
+
+        .modal-overlay.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        .modal-content {
+            background: var(--card);
+            width: 100%;
+            max-width: 480px;
+            border-radius: var(--radius) var(--radius) 0 0;
+            padding: 20px;
+            transform: translateY(100%);
+            transition: transform 0.2s ease;
+        }
+
+        .modal-overlay.show .modal-content {
+            transform: translateY(0);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: none;
+            background: var(--bg);
+            cursor: pointer;
+            font-size: 18px;
+        }
+
+        .student-info-modal {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px;
+            background: var(--bg);
+            border-radius: var(--radius-sm);
+            margin-bottom: 16px;
+        }
+
+        .student-info-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            font-weight: 600;
+        }
+
+        .score-input-wrapper {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+
+        .score-input {
+            flex: 1;
+            padding: 16px;
+            font-size: 32px;
+            font-weight: 600;
+            text-align: center;
+            border: 2px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--card);
+            color: var(--text);
+            outline: none;
+            transition: var(--transition);
+        }
+
+        .score-input:focus {
+            border-color: var(--primary);
+        }
+
+        /* 移除数字输入框的上下箭头 */
+        .score-input::-webkit-outer-spin-button,
+        .score-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+
+        .score-input[type=number] {
+            -moz-appearance: textfield;
+        }
+
+        .score-unit {
+            font-size: 18px;
+            color: var(--text-secondary);
+            font-weight: 500;
+        }
+
+        .score-actions {
+            display: flex;
+            gap: 8px;
+        }
+
+        .score-actions .btn {
+            flex: 1;
+            justify-content: center;
+            padding: 14px;
+            font-size: 16px;
+        }
+
+        .status-options {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+        }
+
+        .status-btn {
+            padding: 12px;
+            border-radius: var(--radius-sm);
+            border: 2px solid var(--border);
+            background: var(--card);
+            font-size: 14px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .status-btn.submitted { border-color: var(--success); color: var(--success); }
+        .status-btn.submitted.active { background: var(--success); color: white; }
+        .status-btn.late { border-color: var(--warning); color: var(--warning); }
+        .status-btn.late.active { background: var(--warning); color: white; }
+        .status-btn.missing { border-color: var(--danger); color: var(--danger); }
+        .status-btn.missing.active { background: var(--danger); color: white; }
+        .status-btn.pending { border-color: var(--text-secondary); color: var(--text-secondary); }
+        .status-btn.pending.active { background: var(--text-secondary); color: white; }
+
+        /* 底部工具栏 */
+        .toolbar {
+            background: var(--card);
+            padding: 12px 16px;
+            box-shadow: 0 -1px 3px 0 rgb(0 0 0 / 0.1);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .toolbar-group {
+            display: flex;
+            gap: 8px;
+        }
+
+        .btn {
+            padding: 10px 16px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: var(--card);
+            font-size: 14px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: var(--transition);
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .btn-primary:hover { opacity: 0.9; }
+
+        /* 设置面板 */
+        .settings-panel {
+            position: fixed;
+            inset: 0;
+            background: var(--bg);
+            z-index: 1001;
+            transform: translateX(100%);
+            transition: transform 0.3s ease;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .settings-panel.show {
+            transform: translateX(0);
+        }
+
+        .settings-header {
+            background: var(--card);
+            padding: 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: var(--shadow);
+        }
+
+        .settings-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        .settings-section {
+            background: var(--card);
+            border-radius: var(--radius);
+            padding: 16px;
+            margin-bottom: 16px;
+        }
+
+        .settings-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 12px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .settings-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .settings-item:last-child { border-bottom: none; }
+
+        .settings-label { font-size: 15px; }
+
+        .settings-desc {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
+        /* 切换开关 */
+        .switch {
+            width: 48px;
+            height: 26px;
+            background: var(--border);
+            border-radius: 13px;
+            position: relative;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .switch::after {
+            content: '';
+            position: absolute;
+            width: 22px;
+            height: 22px;
+            background: white;
+            border-radius: 50%;
+            top: 2px;
+            left: 2px;
+            transition: transform 0.2s ease;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+        }
+
+        .switch.on {
+            background: var(--primary);
+        }
+
+        .switch.on::after {
+            transform: translateX(22px);
+        }
+
+        /* 文本区域 */
+        .textarea {
+            width: 100%;
+            min-height: 200px;
+            padding: 12px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            font-size: 14px;
+            font-family: monospace;
+            resize: vertical;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .btn-group .btn { flex: 1; justify-content: center; }
+
+        /* 统计面板 */
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .stat-card {
+            background: var(--card);
+            border-radius: var(--radius);
+            padding: 16px;
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 32px;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        .stat-label {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: var(--text-secondary);
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        /* 拖拽遮罩 - 批量操作 */
+        .batch-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(79, 70, 229, 0.1);
+            z-index: 999;
+            display: none;
+            pointer-events: none;
+        }
+
+        .batch-overlay.show {
+            display: block;
+        }
+
+        /* 提示信息 */
+        .toast {
+            position: fixed;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%) translateY(100px);
+            background: rgba(30, 41, 59, 0.95);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 24px;
+            font-size: 14px;
+            z-index: 2000;
+            opacity: 0;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+
+        .toast.show {
+            transform: translateX(-50%) translateY(0);
+            opacity: 1;
+        }
+
+        /* 高对比度模式 */
+        body.high-contrast {
+            --bg: #000000;
+            --card: #111111;
+            --text: #ffffff;
+            --text-secondary: #aaaaaa;
+            --border: #444444;
+            --primary: #00ff00;
+            --success: #00ff00;
+            --warning: #ffff00;
+            --danger: #ff0000;
+        }
+
+        body.high-contrast .student-card {
+            border-width: 3px;
+        }
+
+        body.high-contrast .icon-btn,
+        body.high-contrast .btn,
+        body.high-contrast .date-nav {
+            border-width: 2px;
+        }
+
+        /* 隐藏动画 */
+        body.no-animation * {
+            transition: none !important;
+            animation: none !important;
+        }
+
+        /* 响应式 */
+        @media (min-width: 768px) {
+            .student-grid.compact {
+                grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+            }
+            
+            .student-grid.info {
+                grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            }
+        }
+
+        /* 滚动条美化 */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+    <!-- 环境进度条 -->
+    <div class="ambient-progress">
+        <div class="ambient-progress-bar" id="progressBar"></div>
+    </div>
+
+    <!-- 头部 -->
+    <header class="header">
+        <div class="header-top">
+            <div class="header-title">
+                📋 作业追踪
+                <span class="badge" id="progressBadge">0%</span>
+            </div>
+            <div class="header-actions">
+                <button class="icon-btn" id="modeToggle" title="切换视图">⊞</button>
+                <button class="icon-btn" id="statsBtn" title="统计">📊</button>
+                <button class="icon-btn" id="settingsBtn" title="设置">⚙️</button>
+            </div>
+        </div>
+        <div class="date-bar">
+            <button class="date-nav" id="prevDate">◀</button>
+            <select class="date-select" id="dateSelect"></select>
+            <button class="date-nav" id="nextDate">▶</button>
+        </div>
+    </header>
+
+    <!-- 主内容 -->
+    <main class="main">
+        <div class="student-grid compact" id="studentGrid"></div>
+    </main>
+
+    <!-- 底部工具栏 -->
+    <div class="toolbar">
+        <div class="toolbar-group">
+            <button class="btn" id="importBtn">📥 导入</button>
+            <button class="btn" id="exportBtn">📤 导出</button>
+        </div>
+        <button class="btn btn-primary" id="batchModeBtn">⚡ 批量</button>
+    </div>
+
+    <!-- 评分弹窗 -->
+    <div class="modal-overlay" id="scoreModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <span class="modal-title">评分与状态</span>
+                <button class="modal-close" id="closeModal">✕</button>
+            </div>
+            <div class="student-info-modal" id="modalStudentInfo">
+                <div class="student-info-avatar">?</div>
+                <div>
+                    <div style="font-weight: 600;" id="modalStudentName">学生姓名</div>
+                    <div style="font-size: 12px; color: var(--text-secondary);" id="modalStudentId">学号</div>
+                </div>
+            </div>
+            
+            <div class="settings-title">状态</div>
+            <div class="status-options" style="margin-bottom: 16px;">
+                <button class="status-btn submitted" data-status="submitted">已交</button>
+                <button class="status-btn late" data-status="late">迟交</button>
+                <button class="status-btn missing" data-status="missing">未交</button>
+                <button class="status-btn pending" data-status="pending">取消登记</button>
+            </div>
+
+            <div class="settings-title">评分 (0-100，支持两位小数)</div>
+            <div class="score-input-wrapper">
+                <input type="number" class="score-input" id="scoreInput" placeholder="输入分数后回车=已交" min="0" max="100" step="0.01">
+                <span class="score-unit">分</span>
+            </div>
+            <div class="score-actions">
+                <button class="btn" id="clearScoreBtn">清除分数</button>
+                <button class="btn" id="closeModalBtn">关闭</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 设置面板 -->
+    <div class="settings-panel" id="settingsPanel">
+        <div class="settings-header">
+            <button class="icon-btn" id="closeSettings">←</button>
+            <span style="font-size: 18px; font-weight: 600;">设置</span>
+        </div>
+        <div class="settings-content">
+            <div class="settings-section">
+                <div class="settings-title">显示</div>
+                <div class="settings-item">
+                    <div>
+                        <div class="settings-label">高对比度模式</div>
+                        <div class="settings-desc">适应强光环境</div>
+                    </div>
+                    <div class="switch" id="contrastSwitch"></div>
+                </div>
+                <div class="settings-item">
+                    <div>
+                        <div class="settings-label">禁用动画</div>
+                        <div class="settings-desc">提升老旧设备性能</div>
+                    </div>
+                    <div class="switch" id="animationSwitch"></div>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <div class="settings-title">数据管理</div>
+                <div class="settings-item" style="flex-direction: column; align-items: stretch; gap: 8px;">
+                    <div class="settings-label">新学期初始化</div>
+                    <div class="settings-desc">清空所有历史数据，但保留学生名单</div>
+                    <button class="btn" id="resetDataBtn" style="margin-top: 8px; color: var(--danger); border-color: var(--danger);">
+                        🗑️ 重置数据
+                    </button>
+                </div>
+            </div>
+
+            <div class="settings-section">
+                <div class="settings-title">关于</div>
+                <div class="settings-item">
+                    <div class="settings-label">版本</div>
+                    <span style="color: var(--text-secondary);">1.0.0</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 统计面板 -->
+    <div class="settings-panel" id="statsPanel">
+        <div class="settings-header">
+            <button class="icon-btn" id="closeStats">←</button>
+            <span style="font-size: 18px; font-weight: 600;">统计</span>
+        </div>
+        <div class="settings-content">
+            <div class="stats-grid">
+                <div class="stat-card">
+                    <div class="stat-value" id="statTotal">0</div>
+                    <div class="stat-label">总人数</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statSubmitted">0</div>
+                    <div class="stat-label">已提交</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statRate">0%</div>
+                    <div class="stat-label">提交率</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-value" id="statAvg">-</div>
+                    <div class="stat-label">平均分</div>
+                </div>
+            </div>
+            <div class="settings-section">
+                <div class="settings-title">历史趋势 (最近7次)</div>
+                <div id="historyChart" style="height: 200px; display: flex; align-items: flex-end; justify-content: space-around; padding: 20px 0;"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 导入/导出面板 -->
+    <div class="settings-panel" id="dataPanel">
+        <div class="settings-header">
+            <button class="icon-btn" id="closeData">←</button>
+            <span style="font-size: 18px; font-weight: 600;">数据导入/导出</span>
+        </div>
+        <div class="settings-content">
+            <div class="settings-section">
+                <div class="settings-title">导入数据</div>
+                <div class="settings-desc" style="margin-bottom: 12px;">粘贴 JSON 数据或学生名单（每行一个）</div>
+                <textarea class="textarea" id="importText" placeholder='{"students": [{"id": "1", "name": "张三"}], "records": {}}'></textarea>
+                <div class="btn-group">
+                    <button class="btn btn-primary" id="confirmImport">确认导入</button>
+                    <button class="btn" id="clearImport">清空</button>
+                </div>
+            </div>
+            <div class="settings-section">
+                <div class="settings-title">导出数据</div>
+                <div class="settings-desc" style="margin-bottom: 12px;">复制下方数据进行备份</div>
+                <textarea class="textarea" id="exportText" readonly></textarea>
+                <button class="btn btn-primary" id="copyData" style="width: 100%; margin-top: 12px;">📋 复制到剪贴板</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 批量操作遮罩 -->
+    <div class="batch-overlay" id="batchOverlay"></div>
+
+    <!-- 提示信息 -->
+    <div class="toast" id="toast"></div>
+
+    <script>
+        // ============ 数据管理 ============
+        const DataManager = {
+            STORAGE_KEY: 'psa_data_v1',
+            
+            getDefaultData() {
+                return {
+                    students: this.generateSampleStudents(),
+                    records: {},
+                    settings: {
+                        highContrast: false,
+                        noAnimation: false,
+                        viewMode: 'compact' // 'compact' | 'info'
+                    },
+                    version: '1.0.0'
+                };
+            },
+
+            generateSampleStudents() {
+                const names = ['张浩宇', '王梓涵', '李欣怡', '刘子轩', '陈雨桐', '杨晨曦', '黄思琪', '赵文博', '周佳怡', '吴俊杰',
+                    '徐梦洁', '孙浩然', '马晓雯', '朱宇航', '胡雅婷', '林嘉豪', '郭雨萱', '何子墨', '高诗涵', '罗一鸣',
+                    '梁静姝', '宋承宇', '郑心怡', '谢天佑', '韩雨菲', '唐子豪', '冯晓萱', '于嘉树', '董思琪', '萧逸辰',
+                    '程雨萌', '曹子涵', '袁艺馨', '邓博文', '许佳琪', '傅明轩', '沈悦琳', '曾浩然', '彭雨桐', '吕思远'];
+                return names.map((name, i) => ({
+                    id: String(i + 1).padStart(2, '0'),
+                    name: name
+                }));
+            },
+
+            load() {
+                try {
+                    const data = localStorage.getItem(this.STORAGE_KEY);
+                    if (data) {
+                        const parsed = JSON.parse(data);
+                        // 合并默认设置
+                        return { ...this.getDefaultData(), ...parsed };
+                    }
+                } catch (e) {
+                    console.error('加载数据失败:', e);
+                }
+                return this.getDefaultData();
+            },
+
+            save(data) {
+                try {
+                    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(data));
+                } catch (e) {
+                    console.error('保存数据失败:', e);
+                }
+            },
+
+            export() {
+                const data = this.load();
+                return JSON.stringify(data, null, 2);
+            },
+
+            import(jsonStr) {
+                try {
+                    const data = JSON.parse(jsonStr);
+                    if (data.students && Array.isArray(data.students)) {
+                        this.save(data);
+                        return true;
+                    }
+                } catch (e) {
+                    // 尝试解析为纯学生名单
+                    const lines = jsonStr.trim().split('\n').filter(l => l.trim());
+                    if (lines.length > 0) {
+                        const students = lines.map((line, i) => {
+                            const parts = line.trim().split(/[\s,，]+/);
+                            if (parts.length >= 2) {
+                                return { id: parts[0], name: parts[1] };
+                            }
+                            return { id: String(i + 1).padStart(2, '0'), name: line.trim() };
+                        });
+                        const existing = this.load();
+                        existing.students = students;
+                        this.save(existing);
+                        return true;
+                    }
+                }
+                return false;
+            },
+
+            resetRecords() {
+                const data = this.load();
+                data.records = {};
+                this.save(data);
+            }
+        };
+
+        // ============ 状态管理 ============
+        const AppState = {
+            data: DataManager.load(),
+            currentDate: new Date().toISOString().split('T')[0],
+            selectedStudent: null,
+            batchMode: false,
+
+            init() {
+                this.applySettings();
+                this.generateDateOptions();
+            },
+
+            applySettings() {
+                const { settings } = this.data;
+                document.body.classList.toggle('high-contrast', settings.highContrast);
+                document.body.classList.toggle('no-animation', settings.noAnimation);
+            },
+
+            generateDateOptions() {
+                const select = document.getElementById('dateSelect');
+                const dates = [];
+                const today = new Date();
+                
+                // 生成前后30天的选项
+                for (let i = -30; i <= 30; i++) {
+                    const d = new Date(today);
+                    d.setDate(d.getDate() + i);
+                    const dateStr = d.toISOString().split('T')[0];
+                    const label = i === 0 ? '今天' : i === -1 ? '昨天' : i === 1 ? '明天' : 
+                        `${d.getMonth() + 1}/${d.getDate()}`;
+                    dates.push({ value: dateStr, label: `${dateStr} ${label}` });
+                }
+
+                select.innerHTML = dates.map(d => 
+                    `<option value="${d.value}" ${d.value === this.currentDate ? 'selected' : ''}>${d.label}</option>`
+                ).join('');
+            },
+
+            getStudentRecord(studentId) {
+                const dateRecords = this.data.records[this.currentDate] || {};
+                return dateRecords[studentId] || { status: 'pending', score: null };
+            },
+
+            setStudentRecord(studentId, record) {
+                if (!this.data.records[this.currentDate]) {
+                    this.data.records[this.currentDate] = {};
+                }
+                this.data.records[this.currentDate][studentId] = record;
+                DataManager.save(this.data);
+            },
+
+            getStats() {
+                const students = this.data.students;
+                const dateRecords = this.data.records[this.currentDate] || {};
+                
+                let submitted = 0, late = 0, missing = 0, totalScore = 0, scoredCount = 0;
+                
+                students.forEach(s => {
+                    const r = dateRecords[s.id] || {};
+                    if (r.status === 'submitted') submitted++;
+                    else if (r.status === 'late') late++;
+                    else if (r.status === 'missing') missing++;
+                    
+                    if (r.score !== null && r.score !== undefined) {
+                        totalScore += r.score;
+                        scoredCount++;
+                    }
+                });
+
+                return {
+                    total: students.length,
+                    submitted,
+                    late,
+                    missing,
+                    pending: students.length - submitted - late - missing,
+                    rate: Math.round((submitted / students.length) * 100),
+                    avgScore: scoredCount > 0 ? (totalScore / scoredCount).toFixed(1) : '-'
+                };
+            },
+
+            getHistoryStats() {
+                const dates = Object.keys(this.data.records).sort().slice(-7);
+                return dates.map(date => {
+                    const records = this.data.records[date] || {};
+                    const submitted = Object.values(records).filter(r => r.status === 'submitted').length;
+                    return { date, rate: Math.round((submitted / this.data.students.length) * 100) };
+                });
+            }
+        };
+
+        // ============ UI 渲染 ============
+        const UI = {
+            renderGrid() {
+                const grid = document.getElementById('studentGrid');
+                const { students, settings } = AppState.data;
+                const isCompact = settings.viewMode === 'compact';
+                
+                grid.className = `student-grid ${isCompact ? 'compact' : 'info'}`;
+                
+                grid.innerHTML = students.map(student => {
+                    const record = AppState.getStudentRecord(student.id);
+                    const statusClass = record.status === 'submitted' ? 'submitted' : 
+                                       record.status === 'late' ? 'late' : 
+                                       record.status === 'missing' ? 'missing' : '';
+                    
+                    if (isCompact) {
+                        return `
+                            <div class="student-card ${statusClass}" data-id="${student.id}">
+                                <div class="compact-avatar">${student.name[0]}</div>
+                                <div class="compact-id">${student.id}</div>
+                                ${record.score !== null && record.score !== undefined ? 
+                                    `<div class="compact-score">${record.score}</div>` : ''}
+                            </div>
+                        `;
+                    } else {
+                        return `
+                            <div class="student-card ${statusClass}" data-id="${student.id}">
+                                <div class="info-header">
+                                    <div class="info-avatar">${student.name[0]}</div>
+                                    <div style="overflow: hidden;">
+                                        <div class="info-name">${student.name}</div>
+                                        <div class="info-id">${student.id}号</div>
+                                    </div>
+                                </div>
+                                <div class="info-score">
+                                    <span class="score-badge ${record.score !== null ? 'has-score' : ''}">
+                                        ${record.score !== null ? record.score + '分' : '未评分'}
+                                    </span>
+                                </div>
+                            </div>
+                        `;
+                    }
+                }).join('');
+
+                this.updateProgress();
+            },
+
+            updateProgress() {
+                const stats = AppState.getStats();
+                const progressBar = document.getElementById('progressBar');
+                const progressBadge = document.getElementById('progressBadge');
+                
+                progressBar.style.width = stats.rate + '%';
+                progressBadge.textContent = stats.rate + '%';
+                progressBadge.className = 'badge ' + (stats.rate >= 90 ? 'success' : stats.rate >= 60 ? '' : 'warning');
+            },
+
+            showToast(message) {
+                const toast = document.getElementById('toast');
+                toast.textContent = message;
+                toast.classList.add('show');
+                setTimeout(() => toast.classList.remove('show'), 2000);
+            },
+
+            showScoreModal(student) {
+                AppState.selectedStudent = student;
+                const record = AppState.getStudentRecord(student.id);
+                
+                document.getElementById('modalStudentName').textContent = student.name;
+                document.getElementById('modalStudentId').textContent = student.id + '号';
+                document.querySelector('.student-info-avatar').textContent = student.name[0];
+                
+                // 渲染状态按钮
+                document.querySelectorAll('.status-btn').forEach(btn => {
+                    // pending 状态表示未登记，当 record.status 为 'pending' 或不存在时选中
+                    const isPending = btn.dataset.status === 'pending';
+                    const isActive = isPending 
+                        ? (!record.status || record.status === 'pending')
+                        : btn.dataset.status === record.status;
+                    btn.classList.toggle('active', isActive);
+                });
+                
+                // 设置分数输入框
+                const scoreInput = document.getElementById('scoreInput');
+                if (scoreInput) {
+                    scoreInput.value = record.score !== null && record.score !== undefined ? record.score : '';
+                    setTimeout(() => scoreInput.focus(), 100);
+                }
+                
+                document.getElementById('scoreModal').classList.add('show');
+            },
+
+            hideScoreModal() {
+                document.getElementById('scoreModal').classList.remove('show');
+                AppState.selectedStudent = null;
+            },
+
+            updateStats() {
+                const stats = AppState.getStats();
+                document.getElementById('statTotal').textContent = stats.total;
+                document.getElementById('statSubmitted').textContent = stats.submitted;
+                document.getElementById('statRate').textContent = stats.rate + '%';
+                document.getElementById('statAvg').textContent = stats.avgScore;
+
+                // 渲染历史图表
+                const history = AppState.getHistoryStats();
+                const chart = document.getElementById('historyChart');
+                chart.innerHTML = history.map(h => `
+                    <div style="display: flex; flex-direction: column; align-items: center; flex: 1;">
+                        <div style="height: ${h.rate * 1.5}px; width: 30px; background: var(--primary); border-radius: 4px 4px 0 0; opacity: 0.8;"></div>
+                        <div style="font-size: 10px; margin-top: 4px; color: var(--text-secondary);">${h.date.slice(5)}</div>
+                        <div style="font-size: 11px; font-weight: 600;">${h.rate}%</div>
+                    </div>
+                `).join('');
+            }
+        };
+
+        // ============ 事件处理 ============
+        const Events = {
+            init() {
+                // 视图切换
+                document.getElementById('modeToggle').addEventListener('click', () => {
+                    AppState.data.settings.viewMode = 
+                        AppState.data.settings.viewMode === 'compact' ? 'info' : 'compact';
+                    DataManager.save(AppState.data);
+                    UI.renderGrid();
+                });
+
+                // 日期切换
+                document.getElementById('dateSelect').addEventListener('change', (e) => {
+                    AppState.currentDate = e.target.value;
+                    UI.renderGrid();
+                });
+
+                document.getElementById('prevDate').addEventListener('click', () => this.changeDate(-1));
+                document.getElementById('nextDate').addEventListener('click', () => this.changeDate(1));
+
+                // 学生卡片点击
+                document.getElementById('studentGrid').addEventListener('click', (e) => {
+                    const card = e.target.closest('.student-card');
+                    if (!card) return;
+
+                    const studentId = card.dataset.id;
+                    const student = AppState.data.students.find(s => s.id === studentId);
+                    if (!student) return;
+
+                    if (AppState.batchMode) {
+                        // 批量模式：快速切换提交状态
+                        const record = AppState.getStudentRecord(studentId);
+                        const newStatus = record.status === 'submitted' ? 'pending' : 'submitted';
+                        AppState.setStudentRecord(studentId, { ...record, status: newStatus });
+                        UI.renderGrid();
+                    } else {
+                        // 普通模式：打开评分弹窗
+                        UI.showScoreModal(student);
+                    }
+                });
+
+                // 长按检测（用于快速评分）
+                let longPressTimer;
+                document.getElementById('studentGrid').addEventListener('touchstart', (e) => {
+                    const card = e.target.closest('.student-card');
+                    if (!card || AppState.batchMode) return;
+                    
+                    longPressTimer = setTimeout(() => {
+                        const studentId = card.dataset.id;
+                        const student = AppState.data.students.find(s => s.id === studentId);
+                        if (student) UI.showScoreModal(student);
+                    }, 500);
+                });
+
+                document.getElementById('studentGrid').addEventListener('touchend', () => {
+                    clearTimeout(longPressTimer);
+                });
+
+                // 评分弹窗
+                document.getElementById('closeModal').addEventListener('click', UI.hideScoreModal);
+                document.getElementById('scoreModal').addEventListener('click', (e) => {
+                    if (e.target.id === 'scoreModal') UI.hideScoreModal();
+                });
+
+                // 状态选择 - 点击后自动保存并关闭弹窗
+                document.querySelectorAll('.status-btn').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        if (!AppState.selectedStudent) return;
+                        
+                        const status = btn.dataset.status;
+                        const studentId = AppState.selectedStudent.id;
+                        const scoreInput = document.getElementById('scoreInput');
+                        const scoreValue = scoreInput ? scoreInput.value.trim() : '';
+                        const score = scoreValue === '' ? null : parseFloat(scoreValue);
+                        
+                        // 验证分数
+                        if (score !== null && (isNaN(score) || score < 0 || score > 100)) {
+                            UI.showToast('请输入0-100之间的数字');
+                            return;
+                        }
+                        
+                        if (status === 'pending') {
+                            // 取消登记：删除该学生的记录
+                            if (AppState.data.records[AppState.currentDate]) {
+                                delete AppState.data.records[AppState.currentDate][studentId];
+                                if (Object.keys(AppState.data.records[AppState.currentDate]).length === 0) {
+                                    delete AppState.data.records[AppState.currentDate];
+                                }
+                                DataManager.save(AppState.data);
+                            }
+                            UI.showToast('已取消登记');
+                        } else {
+                            // 正常状态更新（包含分数）
+                            AppState.setStudentRecord(studentId, { status, score });
+                            UI.showToast(score !== null ? `已登记: ${status} ${score}分` : `已登记: ${status}`);
+                        }
+                        
+                        UI.renderGrid();
+                        UI.hideScoreModal();
+                    });
+                });
+
+                // 分数输入
+                const scoreInput = document.getElementById('scoreInput');
+                if (!scoreInput) return; // 防止元素不存在时出错
+                
+                // 限制输入范围
+                scoreInput.addEventListener('input', (e) => {
+                    let value = e.target.value;
+                    
+                    // 只允许数字和小数点
+                    value = value.replace(/[^0-9.]/g, '');
+                    
+                    // 确保只有一个小数点
+                    const parts = value.split('.');
+                    if (parts.length > 2) {
+                        value = parts[0] + '.' + parts.slice(1).join('');
+                    }
+                    
+                    // 限制小数位数为2位
+                    if (parts.length === 2 && parts[1].length > 2) {
+                        value = parseFloat(value).toFixed(2);
+                    }
+                    
+                    // 限制范围 0-100
+                    const numValue = parseFloat(value);
+                    if (numValue > 100) {
+                        value = '100';
+                    }
+                    
+                    e.target.value = value;
+                });
+
+                // 清除分数按钮 - 仅清空输入框，不保存
+                const clearScoreBtn = document.getElementById('clearScoreBtn');
+                const closeModalBtn = document.getElementById('closeModalBtn');
+                if (!clearScoreBtn || !closeModalBtn) return;
+                
+                clearScoreBtn.addEventListener('click', () => {
+                    scoreInput.value = '';
+                    scoreInput.focus();
+                });
+
+                // 关闭按钮
+                closeModalBtn.addEventListener('click', UI.hideScoreModal);
+
+                // 回车键 - 默认以"已交"状态保存（兼容Windows和Android）
+                scoreInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter' || e.keyCode === 13) {
+                        e.preventDefault();
+                        if (!AppState.selectedStudent) return;
+                        
+                        const value = scoreInput.value.trim();
+                        const score = value === '' ? null : parseFloat(value);
+                        
+                        if (score !== null && (isNaN(score) || score < 0 || score > 100)) {
+                            UI.showToast('请输入0-100之间的数字');
+                            return;
+                        }
+                        
+                        // 默认以"已交"状态保存
+                        AppState.setStudentRecord(AppState.selectedStudent.id, { status: 'submitted', score });
+                        UI.renderGrid();
+                        UI.showToast(score !== null ? `已登记: 已交 ${score}分` : '已登记: 已交');
+                        UI.hideScoreModal();
+                    }
+                });
+
+                // 设置面板
+                document.getElementById('settingsBtn').addEventListener('click', () => {
+                    document.getElementById('settingsPanel').classList.add('show');
+                    this.updateSwitches();
+                });
+
+                document.getElementById('closeSettings').addEventListener('click', () => {
+                    document.getElementById('settingsPanel').classList.remove('show');
+                });
+
+                // 开关
+                document.getElementById('contrastSwitch').addEventListener('click', (e) => {
+                    AppState.data.settings.highContrast = !AppState.data.settings.highContrast;
+                    DataManager.save(AppState.data);
+                    AppState.applySettings();
+                    e.target.classList.toggle('on', AppState.data.settings.highContrast);
+                });
+
+                document.getElementById('animationSwitch').addEventListener('click', (e) => {
+                    AppState.data.settings.noAnimation = !AppState.data.settings.noAnimation;
+                    DataManager.save(AppState.data);
+                    AppState.applySettings();
+                    e.target.classList.toggle('on', AppState.data.settings.noAnimation);
+                });
+
+                // 重置数据
+                document.getElementById('resetDataBtn').addEventListener('click', () => {
+                    if (confirm('确定要清空所有历史数据吗？学生名单将保留。')) {
+                        DataManager.resetRecords();
+                        AppState.data = DataManager.load();
+                        UI.renderGrid();
+                        UI.showToast('数据已重置');
+                    }
+                });
+
+                // 统计面板
+                document.getElementById('statsBtn').addEventListener('click', () => {
+                    UI.updateStats();
+                    document.getElementById('statsPanel').classList.add('show');
+                });
+
+                document.getElementById('closeStats').addEventListener('click', () => {
+                    document.getElementById('statsPanel').classList.remove('show');
+                });
+
+                // 数据导入导出
+                document.getElementById('importBtn').addEventListener('click', () => {
+                    document.getElementById('dataPanel').classList.add('show');
+                    document.getElementById('importText').focus();
+                });
+
+                document.getElementById('exportBtn').addEventListener('click', () => {
+                    document.getElementById('exportText').value = DataManager.export();
+                    document.getElementById('dataPanel').classList.add('show');
+                });
+
+                document.getElementById('closeData').addEventListener('click', () => {
+                    document.getElementById('dataPanel').classList.remove('show');
+                });
+
+                document.getElementById('confirmImport').addEventListener('click', () => {
+                    const text = document.getElementById('importText').value;
+                    if (DataManager.import(text)) {
+                        AppState.data = DataManager.load();
+                        UI.renderGrid();
+                        UI.showToast('导入成功');
+                        document.getElementById('dataPanel').classList.remove('show');
+                    } else {
+                        UI.showToast('导入失败，请检查数据格式');
+                    }
+                });
+
+                document.getElementById('clearImport').addEventListener('click', () => {
+                    document.getElementById('importText').value = '';
+                });
+
+                document.getElementById('copyData').addEventListener('click', () => {
+                    const text = document.getElementById('exportText');
+                    text.select();
+                    document.execCommand('copy');
+                    UI.showToast('已复制到剪贴板');
+                });
+
+                // 批量模式
+                document.getElementById('batchModeBtn').addEventListener('click', () => {
+                    AppState.batchMode = !AppState.batchMode;
+                    document.getElementById('batchModeBtn').classList.toggle('active', AppState.batchMode);
+                    document.getElementById('batchOverlay').classList.toggle('show', AppState.batchMode);
+                    UI.showToast(AppState.batchMode ? '批量模式：点击快速切换' : '退出批量模式');
+                });
+
+                // 键盘快捷键
+                document.addEventListener('keydown', (e) => {
+                    if (e.key === 'Escape') {
+                        UI.hideScoreModal();
+                        document.getElementById('settingsPanel').classList.remove('show');
+                        document.getElementById('statsPanel').classList.remove('show');
+                        document.getElementById('dataPanel').classList.remove('show');
+                    }
+                });
+            },
+
+            changeDate(delta) {
+                const select = document.getElementById('dateSelect');
+                const newIndex = select.selectedIndex + delta;
+                if (newIndex >= 0 && newIndex < select.options.length) {
+                    select.selectedIndex = newIndex;
+                    AppState.currentDate = select.value;
+                    UI.renderGrid();
+                }
+            },
+
+            updateSwitches() {
+                document.getElementById('contrastSwitch').classList.toggle('on', AppState.data.settings.highContrast);
+                document.getElementById('animationSwitch').classList.toggle('on', AppState.data.settings.noAnimation);
+            }
+        };
+
+        // ============ 初始化 ============
+        document.addEventListener('DOMContentLoaded', () => {
+            AppState.init();
+            UI.renderGrid();
+            Events.init();
+        });
+    </script>
+</body>
+</html>
