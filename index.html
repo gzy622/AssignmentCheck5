@@ -132,6 +132,8 @@
         /* 日期选择器 */
         .date-trigger {
             flex: 1;
+            min-width: 0;
+            max-width: 56%;
             padding: 6px 10px;
             border: 1px solid var(--border);
             border-radius: var(--radius-sm);
@@ -143,6 +145,25 @@
             align-items: center;
             justify-content: space-between;
             transition: var(--transition);
+        }
+
+        .header-stat {
+            padding: 6px 8px;
+            border: 1px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--card);
+            font-size: 11px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            flex-shrink: 0;
+            white-space: nowrap;
+        }
+
+        .header-stat-value {
+            font-weight: 600;
+            color: var(--text);
         }
 
         .date-trigger:hover {
@@ -1330,6 +1351,15 @@
             color: var(--text);
         }
 
+        body.high-contrast .header-stat {
+            color: var(--text);
+            border-color: var(--text);
+        }
+
+        body.high-contrast .header-stat-value {
+            color: var(--text);
+        }
+
         body.high-contrast .calendar-nav {
             color: var(--text);
             border-color: var(--text);
@@ -1427,6 +1457,10 @@
                 </span>
                 <span class="date-trigger-arrow">▼</span>
             </button>
+            <div class="header-stat" id="headerSubmitted">
+                已交
+                <span class="header-stat-value" id="headerSubmittedValue">0</span>
+            </div>
             <div class="date-nav-group">
                 <button class="date-nav" id="toggleViewMode" title="切换显示模式">👤</button>
                 <button class="date-nav" id="openStats" title="统计">📊</button>
@@ -2049,6 +2083,10 @@
                 const progressBar = document.getElementById('progressBar');
                 
                 progressBar.style.width = stats.rate + '%';
+                const submittedEl = document.getElementById('headerSubmittedValue');
+                if (submittedEl) {
+                    submittedEl.textContent = stats.submitted;
+                }
             },
 
             updateAssignmentMeta() {
