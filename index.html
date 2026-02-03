@@ -149,8 +149,28 @@
             border-color: var(--primary);
         }
 
-        .date-trigger-text {
+        .date-trigger-info {
             flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+
+        .date-trigger-primary {
+            font-size: 15px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .date-trigger-secondary {
+            font-size: 10px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .date-trigger-arrow {
@@ -307,6 +327,22 @@
             background: var(--bg);
         }
 
+        .text-input {
+            width: 100%;
+            padding: 8px 10px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: var(--card);
+            font-size: 13px;
+            color: var(--text);
+            transition: var(--transition);
+        }
+
+        .text-input:focus {
+            outline: none;
+            border-color: var(--primary);
+        }
+
         .date-nav-group {
             display: flex;
             align-items: center;
@@ -341,6 +377,26 @@
             grid-template-columns: repeat(5, 1fr);
             gap: 6px;
             transition: var(--transition);
+        }
+
+        .student-grid.disabled .student-card {
+            opacity: 0.45;
+            filter: grayscale(0.6);
+        }
+
+        .no-assignment-tip {
+            margin: 8px;
+            padding: 8px 10px;
+            border-radius: var(--radius-sm);
+            background: var(--card);
+            border: 1px dashed var(--border);
+            color: var(--text-secondary);
+            font-size: 12px;
+            display: none;
+        }
+
+        .no-assignment-tip.show {
+            display: block;
         }
 
         /* 学生卡片 */
@@ -918,6 +974,66 @@
             margin-top: 2px;
         }
 
+        .assignment-list {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .assignment-item {
+            padding: 10px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: var(--card);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 8px;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .assignment-item:hover {
+            border-color: var(--primary);
+        }
+
+        .assignment-item.active {
+            border-color: var(--primary);
+            background: var(--bg);
+        }
+
+        .assignment-item-info {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+            min-width: 0;
+        }
+
+        .assignment-item-name {
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .assignment-item-meta {
+            font-size: 10px;
+            color: var(--text-secondary);
+        }
+
+        .range-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .range-row .text-input {
+            width: 70px;
+            text-align: center;
+        }
+
         /* 切换开关 */
         .switch {
             width: 48px;
@@ -1204,6 +1320,63 @@
             border-width: 2px;
         }
 
+        body.high-contrast .date-trigger {
+            color: var(--text);
+            border-color: var(--text);
+        }
+
+        body.high-contrast .date-trigger-arrow,
+        body.high-contrast .date-trigger-secondary {
+            color: var(--text);
+        }
+
+        body.high-contrast .calendar-nav {
+            color: var(--text);
+            border-color: var(--text);
+        }
+
+        body.high-contrast .date-nav {
+            color: var(--text);
+            border-color: var(--text);
+        }
+
+        body.high-contrast .icon-btn {
+            color: var(--text);
+            border-color: var(--text);
+            background: var(--card);
+        }
+
+        body.high-contrast .status-btn.pending {
+            color: var(--text);
+            border-color: var(--text);
+        }
+
+        body.high-contrast .status-btn.pending.active {
+            background: var(--text);
+            color: var(--bg);
+        }
+
+        body.high-contrast .calendar-close {
+            color: var(--text);
+            border-color: var(--text);
+        }
+
+        body.high-contrast .modal-close {
+            color: var(--text);
+            border-color: var(--text);
+            background: var(--card);
+        }
+
+        body.high-contrast .assignment-item,
+        body.high-contrast .text-input {
+            color: var(--text);
+            border-color: var(--text);
+        }
+
+        body.high-contrast .assignment-item-meta {
+            color: var(--text);
+        }
+
         /* 隐藏动画 */
         body.no-animation * {
             transition: none !important;
@@ -1248,12 +1421,15 @@
     <header class="header">
         <div class="header-top">
             <button class="date-trigger" id="dateTrigger">
-                <span class="date-trigger-text" id="dateTriggerText">2026-02-03 今天</span>
+                <span class="date-trigger-info">
+                    <span class="date-trigger-primary" id="dateTriggerPrimary">作业</span>
+                    <span class="date-trigger-secondary" id="dateTriggerSecondary">2026-02-03 今天</span>
+                </span>
                 <span class="date-trigger-arrow">▼</span>
             </button>
             <div class="date-nav-group">
-                <button class="date-nav" id="prevDate" title="切换显示模式">👤</button>
-                <button class="date-nav" id="nextDate" title="统计">📊</button>
+                <button class="date-nav" id="toggleViewMode" title="切换显示模式">👤</button>
+                <button class="date-nav" id="openStats" title="统计">📊</button>
             </div>
             <div class="header-actions">
                 <button class="icon-btn" id="menuBtn" title="菜单">☰</button>
@@ -1279,12 +1455,24 @@
                 <div class="calendar-weekday">六</div>
             </div>
             <div class="calendar-days" id="calendarDays"></div>
+            <div class="settings-section" style="margin-top: 12px;">
+                <div class="settings-title">作业</div>
+                <input class="text-input" id="assignmentNameInput" placeholder="作业名称">
+                <div class="btn-group" style="margin-top: 8px;">
+                    <button class="btn btn-primary" id="saveAssignmentName">保存名称</button>
+                    <button class="btn" id="createAssignmentBtn">＋ 新建该日作业</button>
+                </div>
+                <div class="settings-desc" id="assignmentMeta" style="margin-top: 8px;">-</div>
+                <div class="settings-desc" style="margin-top: 4px;">点击列表切换作业</div>
+                <div class="assignment-list" id="assignmentList" style="margin-top: 10px;"></div>
+            </div>
             <button class="calendar-close" id="calendarClose">关闭</button>
         </div>
     </div>
 
     <!-- 主内容 -->
     <main class="main">
+        <div class="no-assignment-tip" id="noAssignmentTip">该日期暂无作业，请先在日历面板中新建作业。</div>
         <div class="student-grid" id="studentGrid"></div>
     </main>
 
@@ -1388,7 +1576,7 @@
                 <div class="settings-title">关于</div>
                 <div class="settings-item">
                     <div class="settings-label">版本</div>
-                    <span style="color: var(--text-secondary);">1.0.0</span>
+                    <span style="color: var(--text-secondary);">2.0.0</span>
                 </div>
             </div>
         </div>
@@ -1419,8 +1607,15 @@
                     <div class="stat-label">平均分</div>
                 </div>
             </div>
+            <div class="settings-desc" id="statsAssignmentName" style="margin-top: 12px;">当前作业：-</div>
             <div class="settings-section">
-                <div class="settings-title">历史趋势 (最近7次)</div>
+                <div class="settings-title">历史趋势</div>
+                <div class="range-row" style="margin-bottom: 12px;">
+                    <span class="settings-desc" style="margin-top: 0;">显示最近</span>
+                    <input class="text-input" id="historyRangeInput" type="number" min="1" max="50" inputmode="numeric">
+                    <span class="settings-desc" style="margin-top: 0;">项作业</span>
+                    <button class="btn" id="applyHistoryRange">应用</button>
+                </div>
                 <div id="historyChart" style="height: 200px; display: flex; align-items: flex-end; justify-content: space-around; padding: 20px 0;"></div>
             </div>
         </div>
@@ -1436,7 +1631,7 @@
             <div class="settings-section">
                 <div class="settings-title">导入数据</div>
                 <div class="settings-desc" style="margin-bottom: 12px;">粘贴 JSON 数据或学生名单（每行一个）</div>
-                <textarea class="textarea" id="importText" placeholder='{"students": [{"id": "1", "name": "张三"}], "records": {}}'></textarea>
+                <textarea class="textarea" id="importText" placeholder='{"students":[{"id":"1","name":"张三"}],"assignments":[{"id":"a1","name":"24/02/03作业1","date":"2024-02-03","order":1,"createdAt":1700000000000}],"records":{"a1":{}},"settings":{"historyCount":5},"version":"2.0.0"}'></textarea>
                 <div class="btn-group">
                     <button class="btn btn-primary" id="confirmImport">确认导入</button>
                     <button class="btn" id="clearImport">清空</button>
@@ -1489,6 +1684,13 @@
 
             <div class="settings-section">
                 <div class="settings-title">更多</div>
+                <div class="settings-item" id="assignmentItem" style="cursor: pointer;">
+                    <div>
+                        <div class="settings-label">作业管理</div>
+                        <div class="settings-desc">新增、切换、重命名</div>
+                    </div>
+                    <span style="font-size: 20px;">📝</span>
+                </div>
                 <div class="settings-item" id="statsItem" style="cursor: pointer;">
                     <div>
                         <div class="settings-label">统计</div>
@@ -1511,20 +1713,50 @@
     <div class="toast" id="toast"></div>
 
     <script>
+        function getLocalDateString(date) {
+            const y = date.getFullYear();
+            const m = String(date.getMonth() + 1).padStart(2, '0');
+            const d = String(date.getDate()).padStart(2, '0');
+            return `${y}-${m}-${d}`;
+        }
+
         // ============ 数据管理 ============
         const DataManager = {
-            STORAGE_KEY: 'psa_data_v1',
+            STORAGE_KEY: 'psa_data_v2',
+
+            generateAssignmentId() {
+                return `A${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+            },
+
+            formatAssignmentName(dateStr, order) {
+                const [y, m, d] = dateStr.split('-');
+                return `${y.slice(2)}/${m}/${d}作业${order}`;
+            },
+
+            createAssignment(dateStr, order, name) {
+                return {
+                    id: this.generateAssignmentId(),
+                    name: name || this.formatAssignmentName(dateStr, order),
+                    date: dateStr,
+                    order,
+                    createdAt: Date.now()
+                };
+            },
             
             getDefaultData() {
+                const today = getLocalDateString(new Date());
+                const assignment = this.createAssignment(today, 1);
                 return {
                     students: this.generateSampleStudents(),
-                    records: {},
+                    assignments: [assignment],
+                    records: { [assignment.id]: {} },
                     settings: {
                         highContrast: false,
                         noAnimation: false,
-                        showFullname: false
+                        showFullname: false,
+                        historyCount: 5
                     },
-                    version: '1.0.0'
+                    version: '2.0.0'
                 };
             },
 
@@ -1544,8 +1776,14 @@
                     const data = localStorage.getItem(this.STORAGE_KEY);
                     if (data) {
                         const parsed = JSON.parse(data);
-                        // 合并默认设置
-                        return { ...this.getDefaultData(), ...parsed };
+                        if (parsed && Array.isArray(parsed.assignments) && parsed.records && typeof parsed.records === 'object') {
+                            const defaults = this.getDefaultData();
+                            return {
+                                ...defaults,
+                                ...parsed,
+                                settings: { ...defaults.settings, ...(parsed.settings || {}) }
+                            };
+                        }
                     }
                 } catch (e) {
                     console.error('加载数据失败:', e);
@@ -1569,7 +1807,7 @@
             import(jsonStr) {
                 try {
                     const data = JSON.parse(jsonStr);
-                    if (data.students && Array.isArray(data.students)) {
+                    if (data.students && Array.isArray(data.students) && Array.isArray(data.assignments) && data.records && typeof data.records === 'object') {
                         this.save(data);
                         return true;
                     }
@@ -1584,9 +1822,15 @@
                             }
                             return { id: String(i + 1).padStart(2, '0'), name: line.trim() };
                         });
-                        const existing = this.load();
-                        existing.students = students;
-                        this.save(existing);
+                        const today = getLocalDateString(new Date());
+                        const assignment = this.createAssignment(today, 1);
+                        const newData = {
+                            ...this.getDefaultData(),
+                            students,
+                            assignments: [assignment],
+                            records: { [assignment.id]: {} }
+                        };
+                        this.save(newData);
                         return true;
                     }
                 }
@@ -1595,7 +1839,10 @@
 
             resetRecords() {
                 const data = this.load();
-                data.records = {};
+                const today = getLocalDateString(new Date());
+                const assignment = this.createAssignment(today, 1);
+                data.assignments = [assignment];
+                data.records = { [assignment.id]: {} };
                 this.save(data);
             }
         };
@@ -1603,15 +1850,13 @@
         // ============ 状态管理 ============
         const AppState = {
             data: DataManager.load(),
-            currentDate: (() => {
-                const d = new Date();
-                return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-            })(),
+            currentDate: getLocalDateString(new Date()),
+            currentAssignmentId: null,
             selectedStudent: null,
-
 
             init() {
                 this.applySettings();
+                this.ensureAssignmentForDate(this.currentDate);
             },
 
             applySettings() {
@@ -1620,27 +1865,101 @@
                 document.body.classList.toggle('no-animation', settings.noAnimation);
             },
 
+            getAssignmentsForDate(dateStr) {
+                return this.data.assignments
+                    .filter(a => a.date === dateStr)
+                    .sort((a, b) => b.order - a.order);
+            },
+
+            getSortedAssignments() {
+                return [...this.data.assignments].sort((a, b) => {
+                    if (a.date === b.date) {
+                        return b.order - a.order;
+                    }
+                    return a.date < b.date ? 1 : -1;
+                });
+            },
+
+            getCurrentAssignment() {
+                return this.data.assignments.find(a => a.id === this.currentAssignmentId) || null;
+            },
+
+            ensureAssignmentForDate(dateStr) {
+                const assignments = this.getAssignmentsForDate(dateStr);
+                if (assignments.length === 0) {
+                    const newAssignment = this.createAssignmentForDate(dateStr);
+                    this.currentAssignmentId = newAssignment.id;
+                    return newAssignment;
+                }
+                this.currentAssignmentId = assignments[0].id;
+                return assignments[0];
+            },
+
+            createAssignmentForDate(dateStr) {
+                const sameDate = this.data.assignments.filter(a => a.date === dateStr);
+                const maxOrder = sameDate.length > 0 ? Math.max(...sameDate.map(a => a.order || 0)) : 0;
+                const newAssignment = DataManager.createAssignment(dateStr, maxOrder + 1);
+                this.data.assignments.push(newAssignment);
+                this.data.records[newAssignment.id] = {};
+                this.currentAssignmentId = newAssignment.id;
+                DataManager.save(this.data);
+                return newAssignment;
+            },
+
+            setCurrentAssignment(id) {
+                const assignment = this.data.assignments.find(a => a.id === id);
+                if (!assignment) return;
+                this.currentAssignmentId = id;
+                this.currentDate = assignment.date;
+            },
+
+            renameCurrentAssignment(name) {
+                const assignment = this.getCurrentAssignment();
+                if (!assignment) return;
+                assignment.name = name;
+                DataManager.save(this.data);
+            },
+
             getStudentRecord(studentId) {
-                const dateRecords = this.data.records[this.currentDate] || {};
-                return dateRecords[studentId] || { status: 'pending', score: null };
+                const assignmentId = this.currentAssignmentId;
+                if (!assignmentId) {
+                    return { status: 'pending', score: null };
+                }
+                const assignmentRecords = this.data.records[assignmentId] || {};
+                return assignmentRecords[studentId] || { status: 'pending', score: null };
             },
 
             setStudentRecord(studentId, record) {
-                if (!this.data.records[this.currentDate]) {
-                    this.data.records[this.currentDate] = {};
+                const assignmentId = this.currentAssignmentId;
+                if (!assignmentId) {
+                    return false;
                 }
-                this.data.records[this.currentDate][studentId] = record;
+                if (!this.data.records[assignmentId]) {
+                    this.data.records[assignmentId] = {};
+                }
+                this.data.records[assignmentId][studentId] = record;
                 DataManager.save(this.data);
+                return true;
+            },
+
+            clearStudentRecord(studentId) {
+                const assignmentId = this.currentAssignmentId;
+                if (!assignmentId) return;
+                if (this.data.records[assignmentId]) {
+                    delete this.data.records[assignmentId][studentId];
+                    DataManager.save(this.data);
+                }
             },
 
             getStats() {
                 const students = this.data.students;
-                const dateRecords = this.data.records[this.currentDate] || {};
+                const assignmentId = this.currentAssignmentId;
+                const assignmentRecords = this.data.records[assignmentId] || {};
                 
                 let submitted = 0, late = 0, missing = 0, totalScore = 0, scoredCount = 0;
                 
                 students.forEach(s => {
-                    const r = dateRecords[s.id] || {};
+                    const r = assignmentRecords[s.id] || {};
                     if (r.status === 'submitted') submitted++;
                     else if (r.status === 'late') late++;
                     else if (r.status === 'missing') missing++;
@@ -1651,23 +1970,29 @@
                     }
                 });
 
+                const total = students.length;
+                const rate = total > 0 ? Math.round((submitted / total) * 100) : 0;
+
                 return {
-                    total: students.length,
+                    total,
                     submitted,
                     late,
                     missing,
-                    pending: students.length - submitted - late - missing,
-                    rate: Math.round((submitted / students.length) * 100),
+                    pending: total - submitted - late - missing,
+                    rate,
                     avgScore: scoredCount > 0 ? (totalScore / scoredCount).toFixed(1) : '-'
                 };
             },
 
-            getHistoryStats() {
-                const dates = Object.keys(this.data.records).sort().slice(-7);
-                return dates.map(date => {
-                    const records = this.data.records[date] || {};
+            getHistoryStats(count) {
+                const limit = Math.max(1, count || this.data.settings.historyCount || 5);
+                const assignments = this.getSortedAssignments().slice(0, limit);
+                const total = this.data.students.length;
+                return assignments.map(assignment => {
+                    const records = this.data.records[assignment.id] || {};
                     const submitted = Object.values(records).filter(r => r.status === 'submitted').length;
-                    return { date, rate: Math.round((submitted / this.data.students.length) * 100) };
+                    const rate = total > 0 ? Math.round((submitted / total) * 100) : 0;
+                    return { assignment, rate };
                 });
             }
         };
@@ -1676,10 +2001,15 @@
         const UI = {
             renderGrid() {
                 const grid = document.getElementById('studentGrid');
+                const tip = document.getElementById('noAssignmentTip');
                 const { students, settings } = AppState.data;
                 const showFullname = settings.showFullname || false;
                 
-                grid.className = `student-grid ${showFullname ? 'fullname' : ''}`;
+                const hasAssignment = !!AppState.currentAssignmentId;
+                grid.className = `student-grid ${showFullname ? 'fullname' : ''} ${hasAssignment ? '' : 'disabled'}`;
+                if (tip) {
+                    tip.classList.toggle('show', !hasAssignment);
+                }
                 
                 grid.innerHTML = students.map(student => {
                     const record = AppState.getStudentRecord(student.id);
@@ -1719,6 +2049,40 @@
                 const progressBar = document.getElementById('progressBar');
                 
                 progressBar.style.width = stats.rate + '%';
+            },
+
+            updateAssignmentMeta() {
+                const metaEl = document.getElementById('assignmentMeta');
+                if (!metaEl) return;
+                const assignment = AppState.getCurrentAssignment();
+                if (!assignment) {
+                    metaEl.textContent = '当前日期暂无作业';
+                    return;
+                }
+                const assignmentsForDate = AppState.getAssignmentsForDate(assignment.date);
+                metaEl.textContent = `${assignment.date} · 第${assignment.order}项/共${assignmentsForDate.length}项`;
+            },
+
+            renderAssignmentList() {
+                const list = document.getElementById('assignmentList');
+                if (!list) return;
+                const assignments = AppState.getAssignmentsForDate(AppState.currentDate);
+                if (assignments.length === 0) {
+                    list.innerHTML = `<div class="settings-desc">该日期暂无作业，点击上方按钮新建</div>`;
+                    return;
+                }
+                list.innerHTML = assignments.map(assignment => {
+                    const isActive = assignment.id === AppState.currentAssignmentId;
+                    return `
+                        <div class="assignment-item ${isActive ? 'active' : ''}" data-id="${assignment.id}">
+                            <div class="assignment-item-info">
+                                <div class="assignment-item-name" title="${assignment.name}">${assignment.name}</div>
+                                <div class="assignment-item-meta">${assignment.date} · 第${assignment.order}项</div>
+                            </div>
+                            <span style="font-size: 14px; color: var(--text-secondary);">切换</span>
+                        </div>
+                    `;
+                }).join('');
             },
 
             showToast(message) {
@@ -1767,13 +2131,22 @@
                 document.getElementById('statRate').textContent = stats.rate + '%';
                 document.getElementById('statAvg').textContent = stats.avgScore;
 
+                const currentAssignment = AppState.getCurrentAssignment();
+                const assignmentLabel = currentAssignment ? currentAssignment.name : '-';
+                document.getElementById('statsAssignmentName').textContent = `当前作业：${assignmentLabel}`;
+
+                const historyCount = AppState.data.settings.historyCount || 5;
+                const historyInput = document.getElementById('historyRangeInput');
+                if (historyInput) historyInput.value = historyCount;
+
                 // 渲染历史图表
-                const history = AppState.getHistoryStats();
+                const history = AppState.getHistoryStats(historyCount);
                 const chart = document.getElementById('historyChart');
                 chart.innerHTML = history.map(h => `
                     <div style="display: flex; flex-direction: column; align-items: center; flex: 1;">
                         <div style="height: ${h.rate * 1.5}px; width: 30px; background: var(--primary); border-radius: 4px 4px 0 0; opacity: 0.8;"></div>
-                        <div style="font-size: 10px; margin-top: 4px; color: var(--text-secondary);">${h.date.slice(5)}</div>
+                        <div style="font-size: 10px; margin-top: 4px; color: var(--text-secondary);">${h.assignment.name.length > 6 ? h.assignment.name.slice(0, 6) + '…' : h.assignment.name}</div>
+                        <div style="font-size: 9px; color: var(--text-secondary);">${h.assignment.date.slice(5).replace('-', '/')}</div>
                         <div style="font-size: 11px; font-weight: 600;">${h.rate}%</div>
                     </div>
                 `).join('');
@@ -1788,6 +2161,11 @@
                 const dateTrigger = document.getElementById('dateTrigger');
                 const calendarDays = document.getElementById('calendarDays');
                 const calendarMonth = document.getElementById('calendarMonth');
+                const assignmentNameInput = document.getElementById('assignmentNameInput');
+                const assignmentList = document.getElementById('assignmentList');
+                const createAssignmentBtn = document.getElementById('createAssignmentBtn');
+                const historyRangeInput = document.getElementById('historyRangeInput');
+                const applyHistoryRange = document.getElementById('applyHistoryRange');
                 let calendarCurrentDate = new Date(AppState.currentDate);
 
                 function formatDateLabel(date) {
@@ -1820,14 +2198,10 @@
 
                 function updateDateTrigger() {
                     const date = new Date(AppState.currentDate);
-                    document.getElementById('dateTriggerText').textContent = formatDateLabel(date);
-                }
-
-                function getLocalDateString(date) {
-                    const y = date.getFullYear();
-                    const m = String(date.getMonth() + 1).padStart(2, '0');
-                    const d = String(date.getDate()).padStart(2, '0');
-                    return `${y}-${m}-${d}`;
+                    const assignment = AppState.getCurrentAssignment();
+                    const name = assignment ? assignment.name : '未创建作业';
+                    document.getElementById('dateTriggerPrimary').textContent = name;
+                    document.getElementById('dateTriggerSecondary').textContent = formatDateLabel(date);
                 }
 
                 function renderCalendar() {
@@ -1870,8 +2244,16 @@
 
                         dayEl.addEventListener('click', () => {
                             AppState.currentDate = dateStr;
+                            const assignments = AppState.getAssignmentsForDate(dateStr);
+                            AppState.currentAssignmentId = assignments.length > 0 ? assignments[0].id : null;
                             updateDateTrigger();
                             UI.renderGrid();
+                            UI.renderAssignmentList();
+                            UI.updateAssignmentMeta();
+                            if (assignmentNameInput) {
+                                const current = AppState.getCurrentAssignment();
+                                assignmentNameInput.value = current ? current.name : '';
+                            }
                             calendarPanel.classList.remove('show');
                         });
 
@@ -1879,11 +2261,19 @@
                     }
                 }
 
-                dateTrigger.addEventListener('click', () => {
+                function openCalendarPanel() {
                     calendarCurrentDate = new Date(AppState.currentDate);
                     renderCalendar();
+                    const current = AppState.getCurrentAssignment();
+                    if (assignmentNameInput) {
+                        assignmentNameInput.value = current ? current.name : '';
+                    }
+                    UI.renderAssignmentList();
+                    UI.updateAssignmentMeta();
                     calendarPanel.classList.add('show');
-                });
+                }
+
+                dateTrigger.addEventListener('click', openCalendarPanel);
 
                 calendarPanel.addEventListener('click', (e) => {
                     if (e.target === calendarPanel) {
@@ -1907,8 +2297,57 @@
 
                 updateDateTrigger();
 
+                const handleCreateAssignment = () => {
+                    const newAssignment = AppState.createAssignmentForDate(AppState.currentDate);
+                    updateDateTrigger();
+                    UI.renderGrid();
+                    UI.renderAssignmentList();
+                    UI.updateAssignmentMeta();
+                    if (assignmentNameInput) {
+                        assignmentNameInput.value = newAssignment.name;
+                    }
+                    UI.showToast(`已创建: ${newAssignment.name}`);
+                };
+
+                createAssignmentBtn.addEventListener('click', handleCreateAssignment);
+
+                document.getElementById('saveAssignmentName').addEventListener('click', () => {
+                    if (!assignmentNameInput) return;
+                    const name = assignmentNameInput.value.trim();
+                    if (!name) {
+                        UI.showToast('作业名称不能为空');
+                        return;
+                    }
+                    AppState.renameCurrentAssignment(name);
+                    updateDateTrigger();
+                    UI.renderAssignmentList();
+                    UI.updateAssignmentMeta();
+                    UI.showToast('已更新作业名称');
+                });
+
+                assignmentNameInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        document.getElementById('saveAssignmentName').click();
+                    }
+                });
+
+                assignmentList.addEventListener('click', (e) => {
+                    const item = e.target.closest('.assignment-item');
+                    if (!item) return;
+                    AppState.setCurrentAssignment(item.dataset.id);
+                    updateDateTrigger();
+                    UI.renderGrid();
+                    UI.renderAssignmentList();
+                    UI.updateAssignmentMeta();
+                    if (assignmentNameInput) {
+                        const current = AppState.getCurrentAssignment();
+                        assignmentNameInput.value = current ? current.name : '';
+                    }
+                });
+
                 // 左按钮：切换完整姓名显示
-                document.getElementById('prevDate').addEventListener('click', () => {
+                document.getElementById('toggleViewMode').addEventListener('click', () => {
                     AppState.data.settings.showFullname = !AppState.data.settings.showFullname;
                     DataManager.save(AppState.data);
                     UI.renderGrid();
@@ -1916,7 +2355,7 @@
                 });
 
                 // 右按钮：打开统计界面
-                document.getElementById('nextDate').addEventListener('click', () => {
+                document.getElementById('openStats').addEventListener('click', () => {
                     UI.updateStats();
                     document.getElementById('statsPanel').classList.add('show');
                 });
@@ -1936,6 +2375,10 @@
                     const card = e.target.closest('.student-card');
                     if (!card) return;
                     if (e.pointerType === 'mouse' && e.button !== 0) return;
+                    if (!AppState.currentAssignmentId) {
+                        UI.showToast('该日期暂无作业，请先新建作业');
+                        return;
+                    }
 
                     pressStartTime = Date.now();
                     pressCardId = card.dataset.id;
@@ -1978,12 +2421,23 @@
                         return;
                     }
 
+                    if (!AppState.currentAssignmentId) {
+                        UI.showToast('该日期暂无作业，请先新建作业');
+                        pressCardId = null;
+                        return;
+                    }
+
                     // 短按：切换状态
                     const student = AppState.data.students.find(s => s.id === pressCardId);
                     if (student) {
                         const record = AppState.getStudentRecord(pressCardId);
                         const newStatus = record.status === 'submitted' ? 'pending' : 'submitted';
-                        AppState.setStudentRecord(pressCardId, { ...record, status: newStatus });
+                        const ok = AppState.setStudentRecord(pressCardId, { ...record, status: newStatus });
+                        if (!ok) {
+                            UI.showToast('该日期暂无作业，请先新建作业');
+                            pressCardId = null;
+                            return;
+                        }
                         UI.renderGrid();
                     }
 
@@ -2039,6 +2493,10 @@
                 document.querySelectorAll('.status-btn').forEach(btn => {
                     btn.addEventListener('click', () => {
                         if (!AppState.selectedStudent) return;
+                        if (!AppState.currentAssignmentId) {
+                            UI.showToast('该日期暂无作业，请先新建作业');
+                            return;
+                        }
                         
                         const status = btn.dataset.status;
                         const studentId = AppState.selectedStudent.id;
@@ -2054,19 +2512,17 @@
                         
                         if (status === 'pending') {
                             // 取消登记：删除该学生的记录
-                            if (AppState.data.records[AppState.currentDate]) {
-                                delete AppState.data.records[AppState.currentDate][studentId];
-                                if (Object.keys(AppState.data.records[AppState.currentDate]).length === 0) {
-                                    delete AppState.data.records[AppState.currentDate];
-                                }
-                                DataManager.save(AppState.data);
-                            }
+                            AppState.clearStudentRecord(studentId);
                             UI.showToast('已取消登记');
                         } else {
                             // 正常状态更新（包含分数）
                             const statusMap = { submitted: '已交', late: '迟交', missing: '未交' };
                             const statusText = statusMap[status] || status;
-                            AppState.setStudentRecord(studentId, { status, score });
+                            const ok = AppState.setStudentRecord(studentId, { status, score });
+                            if (!ok) {
+                                UI.showToast('该日期暂无作业，请先新建作业');
+                                return;
+                            }
                             UI.showToast(score !== null ? `已登记: ${statusText} ${score}分` : `已登记: ${statusText}`);
                         }
                         
@@ -2154,12 +2610,20 @@
                             scoreInput.value = value;
                             // 触发保存逻辑
                             if (!AppState.selectedStudent) return;
+                            if (!AppState.currentAssignmentId) {
+                                UI.showToast('该日期暂无作业，请先新建作业');
+                                return;
+                            }
                             const score = value === '' ? null : parseFloat(value);
                             if (score !== null && (isNaN(score) || score < 0 || score > 100)) {
                                 UI.showToast('请输入0-100之间的数字');
                                 return;
                             }
-                            AppState.setStudentRecord(AppState.selectedStudent.id, { status: 'submitted', score });
+                            const ok = AppState.setStudentRecord(AppState.selectedStudent.id, { status: 'submitted', score });
+                            if (!ok) {
+                                UI.showToast('该日期暂无作业，请先新建作业');
+                                return;
+                            }
                             UI.renderGrid();
                             UI.showToast(score !== null ? `已登记: 已交 ${score}分` : '已登记: 已交');
                             UI.hideScoreModal();
@@ -2175,6 +2639,10 @@
                     if (e.key === 'Enter' || e.keyCode === 13) {
                         e.preventDefault();
                         if (!AppState.selectedStudent) return;
+                        if (!AppState.currentAssignmentId) {
+                            UI.showToast('该日期暂无作业，请先新建作业');
+                            return;
+                        }
                         
                         const value = scoreInput.value.trim();
                         const score = value === '' ? null : parseFloat(value);
@@ -2185,7 +2653,11 @@
                         }
                         
                         // 默认以"已交"状态保存
-                        AppState.setStudentRecord(AppState.selectedStudent.id, { status: 'submitted', score });
+                        const ok = AppState.setStudentRecord(AppState.selectedStudent.id, { status: 'submitted', score });
+                        if (!ok) {
+                            UI.showToast('该日期暂无作业，请先新建作业');
+                            return;
+                        }
                         UI.renderGrid();
                         UI.showToast(score !== null ? `已登记: 已交 ${score}分` : '已登记: 已交');
                         UI.hideScoreModal();
@@ -2207,6 +2679,11 @@
                     UI.renderGrid();
                     UI.showToast(AppState.data.settings.showFullname ? '完整姓名模式' : '简洁模式');
                     document.getElementById('menuPanel').classList.remove('show');
+                });
+
+                document.getElementById('assignmentItem').addEventListener('click', () => {
+                    document.getElementById('menuPanel').classList.remove('show');
+                    openCalendarPanel();
                 });
 
                 document.getElementById('importItem').addEventListener('click', () => {
@@ -2258,6 +2735,10 @@
                     if (confirm('确定要清空所有历史数据吗？学生名单将保留。')) {
                         DataManager.resetRecords();
                         AppState.data = DataManager.load();
+                        AppState.currentDate = getLocalDateString(new Date());
+                        const assignments = AppState.getAssignmentsForDate(AppState.currentDate);
+                        AppState.currentAssignmentId = assignments.length > 0 ? assignments[0].id : null;
+                        updateDateTrigger();
                         UI.renderGrid();
                         UI.showToast('数据已重置');
                     }
@@ -2268,6 +2749,25 @@
                     document.getElementById('statsPanel').classList.remove('show');
                 });
 
+                applyHistoryRange.addEventListener('click', () => {
+                    const raw = historyRangeInput.value.trim();
+                    const value = parseInt(raw, 10);
+                    if (isNaN(value) || value < 1) {
+                        UI.showToast('请输入大于0的数量');
+                        return;
+                    }
+                    AppState.data.settings.historyCount = Math.min(value, 50);
+                    DataManager.save(AppState.data);
+                    UI.updateStats();
+                });
+
+                historyRangeInput.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        applyHistoryRange.click();
+                    }
+                });
+
                 document.getElementById('closeData').addEventListener('click', () => {
                     document.getElementById('dataPanel').classList.remove('show');
                 });
@@ -2276,6 +2776,15 @@
                     const text = document.getElementById('importText').value;
                     if (DataManager.import(text)) {
                         AppState.data = DataManager.load();
+                        const latest = AppState.getSortedAssignments()[0];
+                        if (latest) {
+                            AppState.setCurrentAssignment(latest.id);
+                        } else {
+                            AppState.currentDate = getLocalDateString(new Date());
+                            const assignments = AppState.getAssignmentsForDate(AppState.currentDate);
+                            AppState.currentAssignmentId = assignments.length > 0 ? assignments[0].id : null;
+                        }
+                        updateDateTrigger();
                         UI.renderGrid();
                         UI.showToast('导入成功');
                         document.getElementById('dataPanel').classList.remove('show');
