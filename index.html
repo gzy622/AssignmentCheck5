@@ -107,12 +107,12 @@
 
         .header-actions {
             display: flex;
-            gap: 8px;
+            gap: 6px;
         }
 
         .icon-btn {
-            width: 28px;
-            height: 28px;
+            width: 32px;
+            height: 32px;
             border-radius: var(--radius-sm);
             border: 1px solid var(--border);
             background: var(--card);
@@ -133,7 +133,7 @@
         .date-trigger {
             flex: 1;
             min-width: 0;
-            max-width: 56%;
+            max-width: 52%;
             padding: 6px 10px;
             border: 1px solid var(--border);
             border-radius: var(--radius-sm);
@@ -148,22 +148,19 @@
         }
 
         .header-stat {
-            padding: 6px 8px;
+            width: 36px;
+            height: 32px;
+            padding: 0;
             border: 1px solid var(--border);
             border-radius: var(--radius-sm);
             background: var(--card);
-            font-size: 11px;
-            color: var(--text-secondary);
-            display: flex;
-            align-items: center;
-            gap: 4px;
-            flex-shrink: 0;
-            white-space: nowrap;
-        }
-
-        .header-stat-value {
+            font-size: 14px;
             font-weight: 600;
             color: var(--text);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
         }
 
         .date-trigger:hover {
@@ -192,12 +189,6 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-        }
-
-        .date-trigger-arrow {
-            font-size: 10px;
-            color: var(--text-secondary);
-            margin-left: 8px;
         }
 
         .calendar-panel {
@@ -367,12 +358,12 @@
         .date-nav-group {
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 6px;
         }
 
         .date-nav {
-            width: 28px;
-            height: 28px;
+            width: 32px;
+            height: 32px;
             border-radius: var(--radius-sm);
             border: 1px solid var(--border);
             background: var(--card);
@@ -380,7 +371,7 @@
             align-items: center;
             justify-content: center;
             cursor: pointer;
-            font-size: 12px;
+            font-size: 14px;
         }
 
         /* 主内容区 */
@@ -1346,7 +1337,6 @@
             border-color: var(--text);
         }
 
-        body.high-contrast .date-trigger-arrow,
         body.high-contrast .date-trigger-secondary {
             color: var(--text);
         }
@@ -1354,10 +1344,6 @@
         body.high-contrast .header-stat {
             color: var(--text);
             border-color: var(--text);
-        }
-
-        body.high-contrast .header-stat-value {
-            color: var(--text);
         }
 
         body.high-contrast .calendar-nav {
@@ -1455,10 +1441,8 @@
                     <span class="date-trigger-primary" id="dateTriggerPrimary">作业</span>
                     <span class="date-trigger-secondary" id="dateTriggerSecondary">2026-02-03 今天</span>
                 </span>
-                <span class="date-trigger-arrow">▼</span>
             </button>
             <div class="header-stat" id="headerSubmitted">
-                已交
                 <span class="header-stat-value" id="headerSubmittedValue">0</span>
             </div>
             <div class="date-nav-group">
