@@ -1132,7 +1132,7 @@
 
         .stats-list-item {
             display: grid;
-            grid-template-columns: 1fr auto auto;
+            grid-template-columns: 1fr auto;
             gap: 10px;
             align-items: center;
             padding: 8px 10px;
@@ -1154,11 +1154,73 @@
             color: var(--text-secondary);
         }
 
-        .stats-list-meta {
+        .stats-dots {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+            justify-content: flex-start;
+        }
+
+        .stats-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--border);
+            position: relative;
+        }
+
+        .stats-dot:hover::after,
+        .stats-dot:focus::after,
+        .stats-dot:active::after {
+            content: attr(data-title);
+            position: absolute;
+            bottom: 140%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--text);
+            color: var(--card);
             font-size: 10px;
-            color: var(--text-secondary);
-            text-align: right;
+            padding: 2px 6px;
+            border-radius: 6px;
             white-space: nowrap;
+            box-shadow: var(--shadow);
+            z-index: 10;
+        }
+
+        .stats-dot.submitted {
+            background: #2563eb;
+        }
+
+        .stats-dot.late {
+            background: #f97316;
+            box-shadow: 0 0 0 2px var(--card) inset;
+        }
+        .stats-dot.missing { background: var(--danger); }
+        .stats-dot.pending { background: var(--text-secondary); }
+
+        .stats-collapse {
+            cursor: pointer;
+            user-select: none;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .stats-collapse .collapse-arrow {
+            transition: transform 0.2s ease;
+        }
+
+        .stats-collapse.collapsed .collapse-arrow {
+            transform: rotate(-90deg);
+        }
+
+        .stats-collapse-body {
+            display: block;
+        }
+
+        .stats-collapse-body.collapsed {
+            display: none;
         }
 
         .stats-list-status {
@@ -1658,8 +1720,23 @@
             </div>
             <div class="settings-desc" id="statsAssignmentName" style="margin-top: 12px;">当前作业：-</div>
             <div class="settings-section">
-                <div class="settings-title">提交明细</div>
-                <div class="stats-list" id="statsStudentList"></div>
+                <div class="settings-title stats-collapse" id="statsCollapse">
+                    提交明细
+                    <span class="collapse-arrow">▼</span>
+                </div>
+                <div class="stats-collapse-body" id="statsCollapseBody">
+                    <div class="stats-list-sub" style="margin-bottom: 8px;">
+                        从左到右：新→旧
+                        ·
+                        <span style="display:inline-flex; align-items:center; gap:4px; margin-left:4px;">
+                            <span class="stats-dot submitted"></span>已交
+                            <span class="stats-dot late"></span>迟交
+                            <span class="stats-dot missing"></span>未交
+                            <span class="stats-dot pending"></span>未登记
+                        </span>
+                    </div>
+                    <div class="stats-list" id="statsStudentList"></div>
+                </div>
             </div>
             <div class="settings-section">
                 <div class="settings-title">历史趋势</div>
@@ -2215,32 +2292,21 @@
                 if (list) {
                     const students = AppState.data.students;
                     const assignments = AppState.getSortedAssignments().slice(0, historyCount);
-                    const totalAssignments = assignments.length;
 
                     list.innerHTML = students.map(student => {
-                        let submitted = 0;
-                        let late = 0;
-                        let missing = 0;
-                        let pending = 0;
-
-                        assignments.forEach(assignment => {
+                        const dots = assignments.map(assignment => {
                             const records = AppState.data.records[assignment.id] || {};
                             const record = records[student.id] || { status: 'pending' };
-                            if (record.status === 'submitted') submitted++;
-                            else if (record.status === 'late') late++;
-                            else if (record.status === 'missing') missing++;
-                            else pending++;
-                        });
-
-                        const rate = totalAssignments > 0 ? Math.round((submitted / totalAssignments) * 100) : 0;
+                            const status = record.status || 'pending';
+                            return `<span class="stats-dot ${status}" data-title="${assignment.name}"></span>`;
+                        }).join('');
                         return `
                             <div class="stats-list-item">
                                 <div>
                                     <div class="stats-list-name">${student.name}</div>
                                     <div class="stats-list-sub">${student.id}号</div>
                                 </div>
-                                <div class="stats-list-meta">已交 ${submitted}/${totalAssignments}</div>
-                                <span class="stats-list-status submitted">${rate}%</span>
+                                <div class="stats-dots">${dots}</div>
                             </div>
                         `;
                     }).join('');
@@ -2918,6 +2984,13 @@
                 // 统计面板
                 document.getElementById('closeStats').addEventListener('click', () => {
                     document.getElementById('statsPanel').classList.remove('show');
+                });
+
+                document.getElementById('statsCollapse').addEventListener('click', () => {
+                    const header = document.getElementById('statsCollapse');
+                    const body = document.getElementById('statsCollapseBody');
+                    const isCollapsed = body.classList.toggle('collapsed');
+                    header.classList.toggle('collapsed', isCollapsed);
                 });
 
                 applyHistoryRange.addEventListener('click', () => {
