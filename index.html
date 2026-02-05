@@ -208,15 +208,15 @@
 
         .calendar-content {
             position: absolute;
-            bottom: 0;
+            top: 0;
             left: 0;
             right: 0;
+            bottom: 0;
             background: var(--card);
-            border-radius: var(--radius) var(--radius) 0 0;
             padding: 12px;
-            max-height: 80vh;
-            overflow-y: auto;
-            transform: translateY(100%);
+            display: flex;
+            flex-direction: column;
+            transform: translateY(-100%);
             transition: transform 0.2s ease;
         }
 
@@ -228,12 +228,33 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--border);
             margin-bottom: 12px;
         }
 
         .calendar-month {
             font-size: 16px;
             font-weight: 600;
+        }
+
+        .calendar-close-btn {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            border: 1px solid var(--border);
+            background: var(--card);
+            color: var(--text-secondary);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            transition: var(--transition);
+        }
+
+        .calendar-close-btn:active {
+            background: var(--bg);
         }
 
         .calendar-nav {
@@ -323,20 +344,16 @@
             background: white;
         }
 
-        .calendar-close {
-            margin-top: 12px;
-            width: 100%;
-            padding: 10px;
-            border: 1px solid var(--border);
-            border-radius: var(--radius-sm);
-            background: var(--card);
-            font-size: 14px;
-            cursor: pointer;
-            transition: var(--transition);
+        .calendar-body {
+            flex: 1;
+            overflow-y: auto;
+            min-height: 0;
         }
 
-        .calendar-close:active {
-            background: var(--bg);
+        .calendar-footer {
+            padding-top: 12px;
+            border-top: 1px solid var(--border);
+            margin-top: 12px;
         }
 
         .text-input {
@@ -1462,29 +1479,33 @@
                 <button class="calendar-nav" id="calendarPrevMonth">◀</button>
                 <span class="calendar-month" id="calendarMonth">2026年2月</span>
                 <button class="calendar-nav" id="calendarNextMonth">▶</button>
+                <button class="calendar-close-btn" id="calendarClose">✕</button>
             </div>
-            <div class="calendar-weekdays">
-                <div class="calendar-weekday">日</div>
-                <div class="calendar-weekday">一</div>
-                <div class="calendar-weekday">二</div>
-                <div class="calendar-weekday">三</div>
-                <div class="calendar-weekday">四</div>
-                <div class="calendar-weekday">五</div>
-                <div class="calendar-weekday">六</div>
-            </div>
-            <div class="calendar-days" id="calendarDays"></div>
-            <div class="settings-section" style="margin-top: 12px;">
-                <div class="settings-title">作业</div>
-                <input class="text-input" id="assignmentNameInput" placeholder="作业名称">
-                <div class="btn-group" style="margin-top: 8px;">
-                    <button class="btn btn-primary" id="saveAssignmentName">保存名称</button>
-                    <button class="btn" id="createAssignmentBtn">＋ 新建该日作业</button>
+            <div class="calendar-body">
+                <div class="calendar-weekdays">
+                    <div class="calendar-weekday">日</div>
+                    <div class="calendar-weekday">一</div>
+                    <div class="calendar-weekday">二</div>
+                    <div class="calendar-weekday">三</div>
+                    <div class="calendar-weekday">四</div>
+                    <div class="calendar-weekday">五</div>
+                    <div class="calendar-weekday">六</div>
                 </div>
-                <div class="settings-desc" id="assignmentMeta" style="margin-top: 8px;">-</div>
-                <div class="settings-desc" style="margin-top: 4px;">点击列表切换作业</div>
-                <div class="assignment-list" id="assignmentList" style="margin-top: 10px;"></div>
+                <div class="calendar-days" id="calendarDays"></div>
             </div>
-            <button class="calendar-close" id="calendarClose">关闭</button>
+            <div class="calendar-footer">
+                <div class="settings-section">
+                    <div class="settings-title">作业</div>
+                    <input class="text-input" id="assignmentNameInput" placeholder="作业名称">
+                    <div class="btn-group" style="margin-top: 8px;">
+                        <button class="btn btn-primary" id="saveAssignmentName">保存名称</button>
+                        <button class="btn" id="createAssignmentBtn">＋ 新建该日作业</button>
+                    </div>
+                    <div class="settings-desc" id="assignmentMeta" style="margin-top: 8px;">-</div>
+                    <div class="settings-desc" style="margin-top: 4px;">点击列表切换作业</div>
+                    <div class="assignment-list" id="assignmentList" style="margin-top: 10px;"></div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -1561,24 +1582,6 @@
             <button class="icon-btn" id="closeSettings">✕</button>
         </div>
         <div class="settings-content">
-            <div class="settings-section">
-                <div class="settings-title">显示</div>
-                <div class="settings-item">
-                    <div>
-                        <div class="settings-label">高对比度模式</div>
-                        <div class="settings-desc">适应强光环境</div>
-                    </div>
-                    <div class="switch" id="contrastSwitch"></div>
-                </div>
-                <div class="settings-item">
-                    <div>
-                        <div class="settings-label">禁用动画</div>
-                        <div class="settings-desc">提升老旧设备性能</div>
-                    </div>
-                    <div class="switch" id="animationSwitch"></div>
-                </div>
-            </div>
-
             <div class="settings-section">
                 <div class="settings-title">数据管理</div>
                 <div class="settings-item" style="flex-direction: column; align-items: stretch; gap: 8px;">
@@ -1697,6 +1700,20 @@
                         <div class="settings-desc">显示学生全名和学号</div>
                     </div>
                     <span style="font-size: 20px;">👤</span>
+                </div>
+                <div class="settings-item">
+                    <div>
+                        <div class="settings-label">高对比度模式</div>
+                        <div class="settings-desc">适应强光环境</div>
+                    </div>
+                    <div class="switch" id="contrastSwitch"></div>
+                </div>
+                <div class="settings-item">
+                    <div>
+                        <div class="settings-label">禁用动画</div>
+                        <div class="settings-desc">提升老旧设备性能</div>
+                    </div>
+                    <div class="switch" id="animationSwitch"></div>
                 </div>
             </div>
 
@@ -2654,6 +2671,34 @@
 
                         scoreInput.value = value;
                     });
+                });
+
+                // 确定按钮
+                document.querySelector('[data-action="confirm"]').addEventListener('click', () => {
+                    let value = scoreInput.value || '';
+                    if (value !== '') {
+                        const num = parseFloat(value);
+                        if (num > 100) value = '100';
+                    }
+                    scoreInput.value = value;
+                    if (!AppState.selectedStudent) return;
+                    if (!AppState.currentAssignmentId) {
+                        UI.showToast('该日期暂无作业，请先新建作业');
+                        return;
+                    }
+                    const score = value === '' ? null : parseFloat(value);
+                    if (score !== null && (isNaN(score) || score < 0 || score > 100)) {
+                        UI.showToast('请输入0-100之间的数字');
+                        return;
+                    }
+                    const ok = AppState.setStudentRecord(AppState.selectedStudent.id, { status: 'submitted', score });
+                    if (!ok) {
+                        UI.showToast('该日期暂无作业，请先新建作业');
+                        return;
+                    }
+                    UI.renderGrid();
+                    UI.showToast(score !== null ? `已登记: 已交 ${score}分` : '已登记: 已交');
+                    UI.hideScoreModal();
                 });
 
                 // 回车键 - 默认以"已交"状态保存（兼容Windows和Android）
