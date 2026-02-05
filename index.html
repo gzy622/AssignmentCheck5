@@ -2162,6 +2162,44 @@
         // ============ 事件处理 ============
         const Events = {
             init() {
+                let lastBackTime = 0;
+                let allowExit = false;
+
+                const closeAllPanels = () => {
+                    let closed = false;
+                    const panels = ['menuPanel', 'settingsPanel', 'statsPanel', 'dataPanel', 'calendarPanel'];
+                    panels.forEach(id => {
+                        const panel = document.getElementById(id);
+                        if (panel && panel.classList.contains('show')) {
+                            panel.classList.remove('show');
+                            closed = true;
+                        }
+                    });
+                    UI.hideScoreModal();
+                    return closed;
+                };
+
+                // 处理返回键：优先关闭面板；主界面双击返回退出
+                history.pushState({ psa: true }, '');
+                window.addEventListener('popstate', () => {
+                    if (allowExit) return;
+                    if (closeAllPanels()) {
+                        history.pushState({ psa: true }, '');
+                        return;
+                    }
+
+                    const now = Date.now();
+                    if (now - lastBackTime < 1500) {
+                        allowExit = true;
+                        history.go(-1);
+                        return;
+                    }
+
+                    lastBackTime = now;
+                    UI.showToast('再按一次返回退出');
+                    history.pushState({ psa: true }, '');
+                });
+
                 // 日历面板
                 const calendarPanel = document.getElementById('calendarPanel');
                 const dateTrigger = document.getElementById('dateTrigger');
