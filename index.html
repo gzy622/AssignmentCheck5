@@ -1124,6 +1124,61 @@
             margin-bottom: 16px;
         }
 
+        .stats-list {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .stats-list-item {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 8px;
+            align-items: center;
+            padding: 8px 10px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: var(--card);
+        }
+
+        .stats-list-name {
+            font-size: 13px;
+            font-weight: 600;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        .stats-list-sub {
+            font-size: 10px;
+            color: var(--text-secondary);
+        }
+
+        .stats-list-status {
+            font-size: 11px;
+            font-weight: 600;
+            padding: 2px 6px;
+            border-radius: 999px;
+            border: 1px solid var(--border);
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .stats-list-status.submitted {
+            border-color: var(--success);
+            color: var(--success);
+        }
+
+        .stats-list-status.late {
+            border-color: var(--warning);
+            color: var(--warning);
+        }
+
+        .stats-list-status.missing {
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
         .stat-card {
             background: var(--card);
             border-radius: var(--radius);
@@ -1595,6 +1650,10 @@
                 </div>
             </div>
             <div class="settings-desc" id="statsAssignmentName" style="margin-top: 12px;">当前作业：-</div>
+            <div class="settings-section">
+                <div class="settings-title">提交明细</div>
+                <div class="stats-list" id="statsStudentList"></div>
+            </div>
             <div class="settings-section">
                 <div class="settings-title">历史趋势</div>
                 <div class="range-row" style="margin-bottom: 12px;">
@@ -2144,6 +2203,33 @@
                 const historyCount = AppState.data.settings.historyCount || 5;
                 const historyInput = document.getElementById('historyRangeInput');
                 if (historyInput) historyInput.value = historyCount;
+
+                const list = document.getElementById('statsStudentList');
+                if (list) {
+                    const students = AppState.data.students;
+                    const records = AppState.currentAssignmentId ? (AppState.data.records[AppState.currentAssignmentId] || {}) : {};
+                    const statusMap = {
+                        submitted: { label: '已交', className: 'submitted' },
+                        late: { label: '迟交', className: 'late' },
+                        missing: { label: '未交', className: 'missing' },
+                        pending: { label: '未登记', className: '' }
+                    };
+
+                    list.innerHTML = students.map(student => {
+                        const record = records[student.id] || { status: 'pending', score: null };
+                        const status = statusMap[record.status] || statusMap.pending;
+                        const scoreText = record.score !== null && record.score !== undefined ? ` · ${record.score}` : '';
+                        return `
+                            <div class="stats-list-item">
+                                <div>
+                                    <div class="stats-list-name">${student.name}</div>
+                                    <div class="stats-list-sub">${student.id}号${scoreText}</div>
+                                </div>
+                                <span class="stats-list-status ${status.className}">${status.label}</span>
+                            </div>
+                        `;
+                    }).join('');
+                }
 
                 // 渲染历史图表
                 const history = AppState.getHistoryStats(historyCount);
