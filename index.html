@@ -620,7 +620,7 @@
             background: var(--card);
             width: 100%;
             max-width: 420px;
-            max-height: 85vh;
+            height: 92vh;
             overflow-y: auto;
             border-radius: var(--radius) var(--radius) 0 0;
             padding: 12px;
@@ -1765,7 +1765,8 @@
                 const names = ['张浩宇', '王梓涵', '李欣怡', '刘子轩', '陈雨桐', '杨晨曦', '黄思琪', '赵文博', '周佳怡', '吴俊杰',
                     '徐梦洁', '孙浩然', '马晓雯', '朱宇航', '胡雅婷', '林嘉豪', '郭雨萱', '何子墨', '高诗涵', '罗一鸣',
                     '梁静姝', '宋承宇', '郑心怡', '谢天佑', '韩雨菲', '唐子豪', '冯晓萱', '于嘉树', '董思琪', '萧逸辰',
-                    '程雨萌', '曹子涵', '袁艺馨', '邓博文', '许佳琪', '傅明轩', '沈悦琳', '曾浩然', '彭雨桐', '吕思远'];
+                    '程雨萌', '曹子涵', '袁艺馨', '邓博文', '许佳琪', '傅明轩', '沈悦琳', '曾浩然', '彭雨桐', '吕思远',
+                    '秦子瑜', '苏若曦', '叶清欢', '顾泽宇', '林语嫣', '周慕白', '韩沐晨', '唐婉清', '姜雨晴', '许景辰'];
                 return names.map((name, i) => ({
                     id: String(i + 1).padStart(2, '0'),
                     name: name
@@ -2356,7 +2357,6 @@
                     AppState.data.settings.showFullname = !AppState.data.settings.showFullname;
                     DataManager.save(AppState.data);
                     UI.renderGrid();
-                    UI.showToast(AppState.data.settings.showFullname ? '完整姓名' : '简洁模式');
                 });
 
                 // 右按钮：打开统计界面
@@ -2710,7 +2710,6 @@
                     AppState.data.settings.showFullname = !AppState.data.settings.showFullname;
                     DataManager.save(AppState.data);
                     UI.renderGrid();
-                    UI.showToast(AppState.data.settings.showFullname ? '完整姓名模式' : '简洁模式');
                     document.getElementById('menuPanel').classList.remove('show');
                 });
 
@@ -2845,6 +2844,7 @@
                         document.getElementById('settingsPanel').classList.remove('show');
                         document.getElementById('statsPanel').classList.remove('show');
                         document.getElementById('dataPanel').classList.remove('show');
+                        document.getElementById('calendarPanel').classList.remove('show');
                     }
                 });
             },
