@@ -1132,8 +1132,8 @@
 
         .stats-list-item {
             display: grid;
-            grid-template-columns: 1fr auto;
-            gap: 8px;
+            grid-template-columns: 1fr auto auto;
+            gap: 10px;
             align-items: center;
             padding: 8px 10px;
             border-radius: var(--radius-sm);
@@ -1152,6 +1152,13 @@
         .stats-list-sub {
             font-size: 10px;
             color: var(--text-secondary);
+        }
+
+        .stats-list-meta {
+            font-size: 10px;
+            color: var(--text-secondary);
+            text-align: right;
+            white-space: nowrap;
         }
 
         .stats-list-status {
@@ -2207,25 +2214,33 @@
                 const list = document.getElementById('statsStudentList');
                 if (list) {
                     const students = AppState.data.students;
-                    const records = AppState.currentAssignmentId ? (AppState.data.records[AppState.currentAssignmentId] || {}) : {};
-                    const statusMap = {
-                        submitted: { label: '已交', className: 'submitted' },
-                        late: { label: '迟交', className: 'late' },
-                        missing: { label: '未交', className: 'missing' },
-                        pending: { label: '未登记', className: '' }
-                    };
+                    const assignments = AppState.getSortedAssignments().slice(0, historyCount);
+                    const totalAssignments = assignments.length;
 
                     list.innerHTML = students.map(student => {
-                        const record = records[student.id] || { status: 'pending', score: null };
-                        const status = statusMap[record.status] || statusMap.pending;
-                        const scoreText = record.score !== null && record.score !== undefined ? ` · ${record.score}` : '';
+                        let submitted = 0;
+                        let late = 0;
+                        let missing = 0;
+                        let pending = 0;
+
+                        assignments.forEach(assignment => {
+                            const records = AppState.data.records[assignment.id] || {};
+                            const record = records[student.id] || { status: 'pending' };
+                            if (record.status === 'submitted') submitted++;
+                            else if (record.status === 'late') late++;
+                            else if (record.status === 'missing') missing++;
+                            else pending++;
+                        });
+
+                        const rate = totalAssignments > 0 ? Math.round((submitted / totalAssignments) * 100) : 0;
                         return `
                             <div class="stats-list-item">
                                 <div>
                                     <div class="stats-list-name">${student.name}</div>
-                                    <div class="stats-list-sub">${student.id}号${scoreText}</div>
+                                    <div class="stats-list-sub">${student.id}号</div>
                                 </div>
-                                <span class="stats-list-status ${status.className}">${status.label}</span>
+                                <div class="stats-list-meta">已交 ${submitted}/${totalAssignments}</div>
+                                <span class="stats-list-status submitted">${rate}%</span>
                             </div>
                         `;
                     }).join('');
