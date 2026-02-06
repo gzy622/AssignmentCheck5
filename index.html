@@ -1620,16 +1620,6 @@
             </div>
             
             <div class="score-section">
-                <div class="score-label">状态</div>
-                <div class="status-options">
-                    <button class="status-btn submitted" data-status="submitted">已交</button>
-                    <button class="status-btn late" data-status="late">迟交</button>
-                    <button class="status-btn missing" data-status="missing">未交</button>
-                    <button class="status-btn pending" data-status="pending">取消</button>
-                </div>
-            </div>
-            
-            <div class="score-section">
                 <div class="score-row">
                     <input type="text" class="score-input" id="scoreInput" placeholder="-" inputmode="none" readonly onfocus="this.removeAttribute('readonly');">
                     <button class="score-clear-btn" data-action="clear" title="清空">✕</button>
@@ -1657,11 +1647,16 @@
                     </div>
                 </div>
             </div>
-            
-            <div class="score-actions">
-                <button class="btn btn-secondary" id="clearScoreBtn">清除分数</button>
-                <button class="btn btn-primary" data-action="confirm">确定</button>
+
+            <div class="score-section">
+                <div class="status-options">
+                    <button class="status-btn submitted" data-status="submitted">已交</button>
+                    <button class="status-btn late" data-status="late">迟交</button>
+                    <button class="status-btn missing" data-status="missing">未交</button>
+                    <button class="status-btn pending" data-status="pending">取消</button>
+                </div>
             </div>
+            
         </div>
     </div>
 
