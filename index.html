@@ -2769,12 +2769,12 @@
 
                 // 清除分数按钮 - 仅清空输入框，不保存
                 const clearScoreBtn = document.getElementById('clearScoreBtn');
-                if (!clearScoreBtn) return;
-                
-                clearScoreBtn.addEventListener('click', () => {
-                    scoreInput.value = '';
-                    scoreInput.focus();
-                });
+                if (clearScoreBtn) {
+                    clearScoreBtn.addEventListener('click', () => {
+                        scoreInput.value = '';
+                        scoreInput.focus();
+                    });
+                }
 
                 // 清空按钮事件
                 document.querySelectorAll('.score-clear-btn').forEach(btn => {
@@ -2840,7 +2840,9 @@
                 });
 
                 // 确定按钮
-                document.querySelector('[data-action="confirm"]').addEventListener('click', () => {
+                const confirmBtn = document.querySelector('[data-action="confirm"]');
+                if (confirmBtn) {
+                    confirmBtn.addEventListener('click', () => {
                     let value = scoreInput.value || '';
                     if (value !== '') {
                         const num = parseFloat(value);
@@ -2865,7 +2867,8 @@
                     UI.renderGrid();
                     UI.showToast(score !== null ? `已登记: 已交 ${score}分` : '已登记: 已交');
                     UI.hideScoreModal();
-                });
+                    });
+                }
 
                 // 回车键 - 默认以"已交"状态保存（兼容Windows和Android）
                 scoreInput.addEventListener('keydown', (e) => {
