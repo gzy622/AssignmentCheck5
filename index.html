@@ -11,6 +11,10 @@
             --warning: #f59e0b;
             --late: #3b82f6;
             --danger: #ef4444;
+            --status-submitted: #0072B2;
+            --status-late: #E69F00;
+            --status-missing: #D55E00;
+            --status-pending: #6B7280;
             --bg: #f8fafc;
             --card: #ffffff;
             --text: #1e293b;
@@ -498,10 +502,10 @@
             cursor: not-allowed;
         }
 
-        .bulk-btn.submitted { background: var(--success); color: white; border-color: var(--success); }
-        .bulk-btn.late { background: var(--late); color: white; border-color: var(--late); }
-        .bulk-btn.missing { background: var(--danger); color: white; border-color: var(--danger); }
-        .bulk-btn.pending { background: var(--border); color: var(--text); }
+        .bulk-btn.submitted { background: var(--status-submitted); color: white; border-color: var(--status-submitted); }
+        .bulk-btn.late { background: var(--status-late); color: white; border-color: var(--status-late); }
+        .bulk-btn.missing { background: var(--status-missing); color: white; border-color: var(--status-missing); }
+        .bulk-btn.pending { background: var(--card); color: var(--status-pending); border-color: var(--status-pending); }
 
         /* 学生卡片 */
         .student-card {
@@ -521,15 +525,15 @@
         }
 
         .student-card.submitted {
-            border-color: var(--success);
+            border-color: var(--status-submitted);
         }
 
         .student-card.late {
-            border-color: var(--late);
+            border-color: var(--status-late);
         }
 
         .student-card.missing {
-            border-color: var(--danger);
+            border-color: var(--status-missing);
         }
 
         .student-card {
@@ -578,12 +582,12 @@
         }
 
         .student-card.submitted .compact-avatar {
-            background: var(--success);
+            background: var(--status-submitted);
             color: white;
         }
 
         .student-card.late .compact-avatar {
-            background: var(--late);
+            background: var(--status-late);
             color: white;
         }
 
@@ -638,12 +642,12 @@
         }
 
         .student-card.submitted .fullname-avatar {
-            background: var(--success);
+            background: var(--status-submitted);
             color: white;
         }
 
         .student-card.late .fullname-avatar {
-            background: var(--late);
+            background: var(--status-late);
             color: white;
         }
 
@@ -871,14 +875,14 @@
             transition: var(--transition);
         }
 
-        .status-btn.submitted { border-color: var(--success); color: var(--success); }
-        .status-btn.submitted.active { background: var(--success); color: white; }
-        .status-btn.late { border-color: var(--late); color: var(--late); }
-        .status-btn.late.active { background: var(--late); color: white; }
-        .status-btn.missing { border-color: var(--danger); color: var(--danger); }
-        .status-btn.missing.active { background: var(--danger); color: white; }
-        .status-btn.pending { border-color: var(--text-secondary); color: var(--text-secondary); }
-        .status-btn.pending.active { background: var(--text-secondary); color: white; }
+        .status-btn.submitted { border-color: var(--status-submitted); color: var(--status-submitted); }
+        .status-btn.submitted.active { background: var(--status-submitted); color: white; }
+        .status-btn.late { border-color: var(--status-late); color: var(--status-late); }
+        .status-btn.late.active { background: var(--status-late); color: white; }
+        .status-btn.missing { border-color: var(--status-missing); color: var(--status-missing); }
+        .status-btn.missing.active { background: var(--status-missing); color: white; }
+        .status-btn.pending { border-color: var(--status-pending); color: var(--status-pending); }
+        .status-btn.pending.active { background: var(--status-pending); color: white; }
 
         .numpad {
             display: flex;
@@ -1283,13 +1287,21 @@
             z-index: 10;
         }
 
-        .stats-dot.submitted { background: var(--success); }
+        .stats-dot.submitted { background: var(--status-submitted); }
         .stats-dot.late {
-            background: var(--late);
+            background: var(--status-late);
             box-shadow: 0 0 0 2px var(--card) inset;
         }
-        .stats-dot.missing { background: var(--danger); }
-        .stats-dot.pending { background: var(--text-secondary); }
+        .stats-dot.missing {
+            border-radius: 3px;
+            border: 1px solid var(--status-missing);
+            background: repeating-linear-gradient(
+                135deg,
+                var(--status-missing) 0 2px,
+                rgba(255, 255, 255, 0.95) 2px 4px
+            );
+        }
+        .stats-dot.pending { background: var(--status-pending); }
 
         .stats-collapse {
             cursor: pointer;
@@ -1326,18 +1338,20 @@
         }
 
         .stats-list-status.submitted {
-            border-color: var(--success);
-            color: var(--success);
+            border-color: var(--status-submitted);
+            color: var(--status-submitted);
         }
 
         .stats-list-status.late {
-            border-color: var(--late);
-            color: var(--late);
+            border-color: var(--status-late);
+            color: var(--status-late);
         }
 
         .stats-list-status.missing {
-            border-color: var(--danger);
-            color: var(--danger);
+            border-color: var(--status-missing);
+            background: var(--status-missing);
+            color: white;
+            font-weight: 700;
         }
 
         .stat-card {
@@ -1646,7 +1660,6 @@
             </div>
             <div class="date-nav-group">
                 <button class="date-nav" id="toggleViewMode" title="切换显示模式">👤</button>
-                <button class="date-nav" id="openStats" title="统计">📊</button>
                 <button class="date-nav" id="toggleBulk" title="批量选择">☑</button>
             </div>
             <div class="header-actions">
@@ -1930,6 +1943,13 @@
 
             <div class="settings-section">
                 <div class="settings-title">更多</div>
+                <div class="settings-item" id="markPendingMissingItem" style="cursor: pointer;">
+                    <div>
+                        <div class="settings-label">未登记转未交</div>
+                        <div class="settings-desc">一键将当前作业未登记标记为未交</div>
+                    </div>
+                    <span style="font-size: 20px;">⚠</span>
+                </div>
                 <div class="settings-item" id="assignmentItem" style="cursor: pointer;">
                     <div>
                         <div class="settings-label">作业管理</div>
@@ -2276,6 +2296,27 @@
                     const rate = total > 0 ? Math.round((submitted / total) * 100) : 0;
                     return { assignment, rate };
                 });
+            },
+
+            markPendingAsMissingForCurrentAssignment() {
+                const assignmentId = this.currentAssignmentId;
+                if (!assignmentId) return -1;
+                if (!this.data.records[assignmentId]) {
+                    this.data.records[assignmentId] = {};
+                }
+                const assignmentRecords = this.data.records[assignmentId];
+                let changed = 0;
+
+                this.data.students.forEach(student => {
+                    const record = assignmentRecords[student.id];
+                    if (!record || !record.status || record.status === 'pending') {
+                        assignmentRecords[student.id] = { status: 'missing', score: null };
+                        changed++;
+                    }
+                });
+
+                DataManager.save(this.data);
+                return changed;
             }
         };
 
@@ -2732,12 +2773,6 @@
                     UI.renderGrid();
                 });
 
-                // 右按钮：打开统计界面
-                document.getElementById('openStats').addEventListener('click', () => {
-                    UI.updateStats();
-                    document.getElementById('statsPanel').classList.add('show');
-                });
-
                 // 批量选择
                 document.getElementById('toggleBulk').addEventListener('click', () => {
                     if (!AppState.currentAssignmentId) {
@@ -3179,6 +3214,29 @@
                     document.getElementById('menuPanel').classList.remove('show');
                     UI.updateStats();
                     document.getElementById('statsPanel').classList.add('show');
+                });
+
+                document.getElementById('markPendingMissingItem').addEventListener('click', () => {
+                    document.getElementById('menuPanel').classList.remove('show');
+                    if (!AppState.currentAssignmentId) {
+                        UI.showToast('该日期暂无作业，请先新建作业');
+                        return;
+                    }
+                    if (!confirm('将当前作业所有未登记学生标记为未交？')) {
+                        return;
+                    }
+
+                    const changed = AppState.markPendingAsMissingForCurrentAssignment();
+                    if (changed < 0) {
+                        UI.showToast('该日期暂无作业，请先新建作业');
+                        return;
+                    }
+
+                    UI.renderGrid();
+                    if (document.getElementById('statsPanel').classList.contains('show')) {
+                        UI.updateStats();
+                    }
+                    UI.showToast(changed === 0 ? '无需更新，当前作业无未登记' : `已更新 ${changed} 人为未交`);
                 });
 
                 document.getElementById('settingsItem').addEventListener('click', () => {
