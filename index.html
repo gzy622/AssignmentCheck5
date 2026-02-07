@@ -9,6 +9,7 @@
             --primary: #4f46e5;
             --success: #22c55e;
             --warning: #f59e0b;
+            --late: #3b82f6;
             --danger: #ef4444;
             --bg: #f8fafc;
             --card: #ffffff;
@@ -498,7 +499,7 @@
         }
 
         .bulk-btn.submitted { background: var(--success); color: white; border-color: var(--success); }
-        .bulk-btn.late { background: var(--warning); color: white; border-color: var(--warning); }
+        .bulk-btn.late { background: var(--late); color: white; border-color: var(--late); }
         .bulk-btn.missing { background: var(--danger); color: white; border-color: var(--danger); }
         .bulk-btn.pending { background: var(--border); color: var(--text); }
 
@@ -524,7 +525,7 @@
         }
 
         .student-card.late {
-            border-color: var(--warning);
+            border-color: var(--late);
         }
 
         .student-card.missing {
@@ -582,7 +583,7 @@
         }
 
         .student-card.late .compact-avatar {
-            background: var(--warning);
+            background: var(--late);
             color: white;
         }
 
@@ -642,7 +643,7 @@
         }
 
         .student-card.late .fullname-avatar {
-            background: var(--warning);
+            background: var(--late);
             color: white;
         }
 
@@ -872,8 +873,8 @@
 
         .status-btn.submitted { border-color: var(--success); color: var(--success); }
         .status-btn.submitted.active { background: var(--success); color: white; }
-        .status-btn.late { border-color: var(--warning); color: var(--warning); }
-        .status-btn.late.active { background: var(--warning); color: white; }
+        .status-btn.late { border-color: var(--late); color: var(--late); }
+        .status-btn.late.active { background: var(--late); color: white; }
         .status-btn.missing { border-color: var(--danger); color: var(--danger); }
         .status-btn.missing.active { background: var(--danger); color: white; }
         .status-btn.pending { border-color: var(--text-secondary); color: var(--text-secondary); }
@@ -1282,12 +1283,9 @@
             z-index: 10;
         }
 
-        .stats-dot.submitted {
-            background: #2563eb;
-        }
-
+        .stats-dot.submitted { background: var(--success); }
         .stats-dot.late {
-            background: #f97316;
+            background: var(--late);
             box-shadow: 0 0 0 2px var(--card) inset;
         }
         .stats-dot.missing { background: var(--danger); }
@@ -1333,8 +1331,8 @@
         }
 
         .stats-list-status.late {
-            border-color: var(--warning);
-            color: var(--warning);
+            border-color: var(--late);
+            color: var(--late);
         }
 
         .stats-list-status.missing {
