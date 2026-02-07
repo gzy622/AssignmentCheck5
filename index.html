@@ -11,9 +11,9 @@
             --warning: #f59e0b;
             --late: #3b82f6;
             --danger: #ef4444;
-            --status-submitted: #0072B2;
-            --status-late: #E69F00;
-            --status-missing: #D55E00;
+            --status-submitted: #22c55e;
+            --status-late: #3b82f6;
+            --status-missing: #ef4444;
             --status-pending: #6B7280;
             --bg: #f8fafc;
             --card: #ffffff;
@@ -1289,19 +1289,20 @@
 
         .stats-dot.submitted { background: var(--status-submitted); }
         .stats-dot.late {
+            border-radius: 50%;
+            border: none;
             background: var(--status-late);
-            box-shadow: 0 0 0 2px var(--card) inset;
         }
         .stats-dot.missing {
-            border-radius: 3px;
-            border: 1px solid var(--status-missing);
-            background: repeating-linear-gradient(
-                135deg,
-                var(--status-missing) 0 2px,
-                rgba(255, 255, 255, 0.95) 2px 4px
-            );
+            border-radius: 50%;
+            border: none;
+            background: var(--status-missing);
         }
-        .stats-dot.pending { background: var(--status-pending); }
+        .stats-dot.pending {
+            border-radius: 50%;
+            border: 1px solid var(--status-pending);
+            background: radial-gradient(circle, #ffffff 0 42%, var(--status-pending) 45% 100%);
+        }
 
         .stats-collapse {
             cursor: pointer;
