@@ -128,6 +128,7 @@
         .icon-btn:hover { background: var(--bg); }
         .icon-btn.active { background: var(--primary); color: white; border-color: var(--primary); }
         .icon-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .date-nav.active { background: var(--primary); color: white; border-color: var(--primary); }
 
         /* 日期选择器 */
         .date-trigger {
@@ -429,6 +430,78 @@
             display: block;
         }
 
+        /* 批量操作栏 */
+        .bulk-bar {
+            position: fixed;
+            left: 8px;
+            right: 8px;
+            bottom: 8px;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: var(--radius);
+            box-shadow: var(--shadow);
+            padding: 8px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+            justify-content: space-between;
+            z-index: 900;
+            transform: translateY(110%);
+            transition: transform 0.2s ease;
+        }
+
+        .bulk-bar.show {
+            transform: translateY(0);
+        }
+
+        body.bulk-mode .main {
+            padding-bottom: 84px;
+        }
+
+        .bulk-left {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .bulk-actions {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .bulk-count {
+            font-size: 12px;
+            color: var(--text-secondary);
+            padding: 0 4px;
+        }
+
+        .bulk-btn {
+            padding: 6px 10px;
+            border-radius: var(--radius-sm);
+            border: 1px solid var(--border);
+            background: var(--card);
+            font-size: 12px;
+            cursor: pointer;
+            transition: var(--transition);
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .bulk-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        .bulk-btn.submitted { background: var(--success); color: white; border-color: var(--success); }
+        .bulk-btn.late { background: var(--warning); color: white; border-color: var(--warning); }
+        .bulk-btn.missing { background: var(--danger); color: white; border-color: var(--danger); }
+        .bulk-btn.pending { background: var(--border); color: var(--text); }
+
         /* 学生卡片 */
         .student-card {
             background: var(--card);
@@ -465,6 +538,27 @@
             align-items: center;
             justify-content: center;
             padding: 3px;
+        }
+
+        .student-card.selected {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px var(--primary) inset;
+        }
+
+        .student-card.selected::after {
+            content: "✓";
+            position: absolute;
+            top: 4px;
+            left: 4px;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            background: var(--primary);
+            color: white;
+            font-size: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .compact-avatar {
@@ -1555,6 +1649,7 @@
             <div class="date-nav-group">
                 <button class="date-nav" id="toggleViewMode" title="切换显示模式">👤</button>
                 <button class="date-nav" id="openStats" title="统计">📊</button>
+                <button class="date-nav" id="toggleBulk" title="批量选择">☑</button>
             </div>
             <div class="header-actions">
                 <button class="icon-btn" id="menuBtn" title="菜单">☰</button>
@@ -1604,6 +1699,20 @@
         <div class="no-assignment-tip" id="noAssignmentTip">该日期暂无作业，请先在日历面板中新建作业。</div>
         <div class="student-grid" id="studentGrid"></div>
     </main>
+
+    <div class="bulk-bar" id="bulkBar">
+        <div class="bulk-left">
+            <span class="bulk-count" id="bulkCount">已选 0</span>
+            <button class="bulk-btn" id="bulkSelectAll">全选</button>
+            <button class="bulk-btn" id="bulkClear">清空</button>
+        </div>
+        <div class="bulk-actions">
+            <button class="bulk-btn submitted" data-bulk-status="submitted">已交</button>
+            <button class="bulk-btn late" data-bulk-status="late">迟交</button>
+            <button class="bulk-btn missing" data-bulk-status="missing">未交</button>
+            <button class="bulk-btn pending" data-bulk-status="pending">取消</button>
+        </div>
+    </div>
 
     <!-- 评分弹窗 -->
     <div class="modal-overlay" id="scoreModal">
@@ -1993,6 +2102,8 @@
             currentDate: getLocalDateString(new Date()),
             currentAssignmentId: null,
             selectedStudent: null,
+            bulkMode: false,
+            bulkSelectedIds: new Set(),
 
             init() {
                 this.applySettings();
@@ -2051,6 +2162,7 @@
                 if (!assignment) return;
                 this.currentAssignmentId = id;
                 this.currentDate = assignment.date;
+                this.clearBulkSelection();
             },
 
             renameCurrentAssignment(name) {
@@ -2089,6 +2201,38 @@
                     delete this.data.records[assignmentId][studentId];
                     DataManager.save(this.data);
                 }
+            },
+
+            setBulkMode(enabled) {
+                this.bulkMode = !!enabled;
+                if (!this.bulkMode) {
+                    this.clearBulkSelection();
+                }
+            },
+
+            toggleBulkSelection(studentId) {
+                if (this.bulkSelectedIds.has(studentId)) {
+                    this.bulkSelectedIds.delete(studentId);
+                } else {
+                    this.bulkSelectedIds.add(studentId);
+                }
+            },
+
+            clearBulkSelection() {
+                this.bulkSelectedIds.clear();
+            },
+
+            selectAllStudents() {
+                this.bulkSelectedIds = new Set(this.data.students.map(s => s.id));
+            },
+
+            isAllSelected() {
+                const total = this.data.students.length;
+                return total > 0 && this.bulkSelectedIds.size === total;
+            },
+
+            getSelectedIds() {
+                return Array.from(this.bulkSelectedIds);
             },
 
             getStats() {
@@ -2146,6 +2290,9 @@
                 const showFullname = settings.showFullname || false;
                 
                 const hasAssignment = !!AppState.currentAssignmentId;
+                if (!hasAssignment && AppState.bulkMode) {
+                    AppState.setBulkMode(false);
+                }
                 grid.className = `student-grid ${showFullname ? 'fullname' : ''} ${hasAssignment ? '' : 'disabled'}`;
                 if (tip) {
                     tip.classList.toggle('show', !hasAssignment);
@@ -2156,10 +2303,11 @@
                     const statusClass = record.status === 'submitted' ? 'submitted' : 
                                        record.status === 'late' ? 'late' : 
                                        record.status === 'missing' ? 'missing' : '';
+                    const selectedClass = AppState.bulkMode && AppState.bulkSelectedIds.has(student.id) ? 'selected' : '';
                     
                     if (showFullname) {
                         return `
-                            <div class="student-card ${statusClass}" data-id="${student.id}">
+                            <div class="student-card ${statusClass} ${selectedClass}" data-id="${student.id}">
                                 <div class="fullname-avatar">${student.name[0]}</div>
                                 <div class="fullname-info">
                                     <div class="fullname-name">${student.name}</div>
@@ -2171,7 +2319,7 @@
                         `;
                     } else {
                         return `
-                            <div class="student-card ${statusClass}" data-id="${student.id}">
+                            <div class="student-card ${statusClass} ${selectedClass}" data-id="${student.id}">
                                 <div class="compact-avatar">${student.name[0]}</div>
                                 <div class="compact-id">${student.id}</div>
                                 ${record.score !== null && record.score !== undefined ? 
@@ -2182,6 +2330,7 @@
                 }).join('');
 
                 this.updateProgress();
+                this.updateBulkBar();
             },
 
             updateProgress() {
@@ -2193,6 +2342,32 @@
                 if (submittedEl) {
                     submittedEl.textContent = stats.submitted;
                 }
+            },
+
+            updateBulkBar() {
+                const bulkBar = document.getElementById('bulkBar');
+                const bulkToggle = document.getElementById('toggleBulk');
+                const countEl = document.getElementById('bulkCount');
+                const selectAllBtn = document.getElementById('bulkSelectAll');
+                const clearBtn = document.getElementById('bulkClear');
+                const hasAssignment = !!AppState.currentAssignmentId;
+                const enabled = AppState.bulkMode && hasAssignment;
+
+                if (bulkBar) bulkBar.classList.toggle('show', enabled);
+                document.body.classList.toggle('bulk-mode', enabled);
+                if (bulkToggle) bulkToggle.classList.toggle('active', enabled);
+
+                const count = AppState.bulkSelectedIds.size;
+                if (countEl) countEl.textContent = `已选 ${count}`;
+                if (selectAllBtn) {
+                    selectAllBtn.textContent = AppState.isAllSelected() ? '取消全选' : '全选';
+                    selectAllBtn.disabled = AppState.data.students.length === 0;
+                }
+                if (clearBtn) clearBtn.disabled = count === 0;
+
+                document.querySelectorAll('[data-bulk-status]').forEach(btn => {
+                    btn.disabled = count === 0;
+                });
             },
 
             updateAssignmentMeta() {
@@ -2565,6 +2740,64 @@
                     document.getElementById('statsPanel').classList.add('show');
                 });
 
+                // 批量选择
+                document.getElementById('toggleBulk').addEventListener('click', () => {
+                    if (!AppState.currentAssignmentId) {
+                        UI.showToast('该日期暂无作业，请先新建作业');
+                        return;
+                    }
+                    AppState.setBulkMode(!AppState.bulkMode);
+                    UI.renderGrid();
+                });
+
+                document.getElementById('bulkSelectAll').addEventListener('click', () => {
+                    if (!AppState.bulkMode) return;
+                    if (AppState.isAllSelected()) {
+                        AppState.clearBulkSelection();
+                    } else {
+                        AppState.selectAllStudents();
+                    }
+                    UI.renderGrid();
+                });
+
+                document.getElementById('bulkClear').addEventListener('click', () => {
+                    if (!AppState.bulkMode) return;
+                    AppState.clearBulkSelection();
+                    UI.renderGrid();
+                });
+
+                document.querySelectorAll('[data-bulk-status]').forEach(btn => {
+                    btn.addEventListener('click', () => {
+                        if (!AppState.bulkMode) return;
+                        if (!AppState.currentAssignmentId) {
+                            UI.showToast('该日期暂无作业，请先新建作业');
+                            return;
+                        }
+                        const status = btn.dataset.bulkStatus;
+                        const selectedIds = AppState.getSelectedIds();
+                        if (selectedIds.length === 0) return;
+
+                        selectedIds.forEach(studentId => {
+                            if (status === 'pending') {
+                                AppState.clearStudentRecord(studentId);
+                                return;
+                            }
+                            const record = AppState.getStudentRecord(studentId);
+                            AppState.setStudentRecord(studentId, { ...record, status });
+                        });
+
+                        const statusMap = {
+                            submitted: '已交',
+                            late: '迟交',
+                            missing: '未交',
+                            pending: '取消登记'
+                        };
+                        UI.showToast(`已批量更新: ${statusMap[status] || status} (${selectedIds.length}人)`);
+                        AppState.clearBulkSelection();
+                        UI.renderGrid();
+                    });
+                });
+
                 // 学生卡片交互 - 点击切换状态，长按打开评分
                 let pressStartTime = 0;
                 let pressCardId = null;
@@ -2596,6 +2829,10 @@
 
                     card.setPointerCapture(e.pointerId);
 
+                    if (AppState.bulkMode) {
+                        return;
+                    }
+
                     // 启动长按定时器，到达时间自动弹出评分弹窗
                     longPressTimer = setTimeout(() => {
                         isLongPress = true;
@@ -2622,6 +2859,13 @@
                     }
                     
                     if (!card || pressCardId !== card.dataset.id) {
+                        pressCardId = null;
+                        return;
+                    }
+
+                    if (AppState.bulkMode) {
+                        AppState.toggleBulkSelection(pressCardId);
+                        UI.renderGrid();
                         pressCardId = null;
                         return;
                     }
@@ -3049,6 +3293,10 @@
                 // 键盘快捷键
                 document.addEventListener('keydown', (e) => {
                     if (e.key === 'Escape') {
+                        if (AppState.bulkMode) {
+                            AppState.setBulkMode(false);
+                            UI.renderGrid();
+                        }
                         UI.hideScoreModal();
                         document.getElementById('menuPanel').classList.remove('show');
                         document.getElementById('settingsPanel').classList.remove('show');
