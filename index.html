@@ -3000,6 +3000,13 @@
             init() {
                 let lastBackTime = 0;
                 let allowExit = false;
+                const byId = (id) => document.getElementById(id);
+                const on = (el, eventName, handler, options) => {
+                    if (!el) return false;
+                    el.addEventListener(eventName, handler, options);
+                    return true;
+                };
+                const onId = (id, eventName, handler, options) => on(byId(id), eventName, handler, options);
 
                 const closeAllPanels = () => {
                     let closed = false;
@@ -3037,15 +3044,16 @@
                 });
 
                 // 日历面板
-                const calendarPanel = document.getElementById('calendarPanel');
-                const dateTrigger = document.getElementById('dateTrigger');
-                const calendarDays = document.getElementById('calendarDays');
-                const calendarMonth = document.getElementById('calendarMonth');
-                const assignmentNameInput = document.getElementById('assignmentNameInput');
-                const assignmentList = document.getElementById('assignmentList');
-                const createAssignmentBtn = document.getElementById('createAssignmentBtn');
-                const historyRangeInput = document.getElementById('historyRangeInput');
-                const applyHistoryRange = document.getElementById('applyHistoryRange');
+                const calendarPanel = byId('calendarPanel');
+                const dateTrigger = byId('dateTrigger');
+                const calendarDays = byId('calendarDays');
+                const calendarMonth = byId('calendarMonth');
+                const assignmentNameInput = byId('assignmentNameInput');
+                const assignmentList = byId('assignmentList');
+                const createAssignmentBtn = byId('createAssignmentBtn');
+                const historyRangeInput = byId('historyRangeInput');
+                const applyHistoryRange = byId('applyHistoryRange');
+                const studentGrid = byId('studentGrid');
                 let calendarCurrentDate = new Date(AppState.currentDate);
 
                 function formatDateLabel(date) {
@@ -3085,6 +3093,7 @@
                 }
 
                 function renderCalendar() {
+                    if (!calendarMonth || !calendarDays) return;
                     const year = calendarCurrentDate.getFullYear();
                     const month = calendarCurrentDate.getMonth();
                     const firstDay = new Date(year, month, 1);
@@ -3142,6 +3151,7 @@
                 }
 
                 function openCalendarPanel() {
+                    if (!calendarPanel) return;
                     calendarCurrentDate = new Date(AppState.currentDate);
                     renderCalendar();
                     const current = AppState.getCurrentAssignment();
@@ -3153,25 +3163,26 @@
                     calendarPanel.classList.add('show');
                 }
 
-                dateTrigger.addEventListener('click', openCalendarPanel);
+                on(dateTrigger, 'click', openCalendarPanel);
 
-                calendarPanel.addEventListener('click', (e) => {
+                on(calendarPanel, 'click', (e) => {
                     if (e.target === calendarPanel) {
                         calendarPanel.classList.remove('show');
                     }
                 });
 
-                document.getElementById('calendarPrevMonth').addEventListener('click', () => {
+                onId('calendarPrevMonth', 'click', () => {
                     calendarCurrentDate.setMonth(calendarCurrentDate.getMonth() - 1);
                     renderCalendar();
                 });
 
-                document.getElementById('calendarNextMonth').addEventListener('click', () => {
+                onId('calendarNextMonth', 'click', () => {
                     calendarCurrentDate.setMonth(calendarCurrentDate.getMonth() + 1);
                     renderCalendar();
                 });
 
-                document.getElementById('calendarClose').addEventListener('click', () => {
+                onId('calendarClose', 'click', () => {
+                    if (!calendarPanel) return;
                     calendarPanel.classList.remove('show');
                 });
 
@@ -3189,9 +3200,9 @@
                     UI.showToast(`已创建: ${newAssignment.name}`);
                 };
 
-                createAssignmentBtn.addEventListener('click', handleCreateAssignment);
+                on(createAssignmentBtn, 'click', handleCreateAssignment);
 
-                document.getElementById('saveAssignmentName').addEventListener('click', () => {
+                onId('saveAssignmentName', 'click', () => {
                     if (!assignmentNameInput) return;
                     const name = assignmentNameInput.value.trim();
                     if (!name) {
@@ -3205,14 +3216,14 @@
                     UI.showToast('已更新作业名称');
                 });
 
-                assignmentNameInput.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter') {
-                        e.preventDefault();
-                        document.getElementById('saveAssignmentName').click();
-                    }
+                on(assignmentNameInput, 'keydown', (e) => {
+                    if (e.key !== 'Enter') return;
+                    e.preventDefault();
+                    const saveBtn = byId('saveAssignmentName');
+                    if (saveBtn) saveBtn.click();
                 });
 
-                assignmentList.addEventListener('click', (e) => {
+                on(assignmentList, 'click', (e) => {
                     const item = e.target.closest('.assignment-item');
                     if (!item) return;
                     AppState.setCurrentAssignment(item.dataset.id);
@@ -3227,14 +3238,14 @@
                 });
 
                 // 左按钮：切换完整姓名显示
-                document.getElementById('toggleViewMode').addEventListener('click', () => {
+                onId('toggleViewMode', 'click', () => {
                     AppState.data.settings.showFullname = !AppState.data.settings.showFullname;
                     DataManager.save(AppState.data);
                     UI.renderGrid();
                 });
 
                 // 批量选择
-                document.getElementById('toggleBulk').addEventListener('click', () => {
+                onId('toggleBulk', 'click', () => {
                     if (!AppState.currentAssignmentId) {
                         UI.showToast('该日期暂无作业，请先新建作业');
                         return;
@@ -3243,7 +3254,7 @@
                     UI.renderGrid();
                 });
 
-                document.getElementById('bulkSelectAll').addEventListener('click', () => {
+                onId('bulkSelectAll', 'click', () => {
                     if (!AppState.bulkMode) return;
                     if (AppState.isAllSelected()) {
                         AppState.clearBulkSelection();
@@ -3253,7 +3264,7 @@
                     UI.renderGrid();
                 });
 
-                document.getElementById('bulkClear').addEventListener('click', () => {
+                onId('bulkClear', 'click', () => {
                     if (!AppState.bulkMode) return;
                     AppState.clearBulkSelection();
                     UI.renderGrid();
@@ -3301,133 +3312,135 @@
                 const LONG_PRESS_DURATION = 500;
                 const SCROLL_THRESHOLD = 8;
 
-                // 统一处理所有输入设备（鼠标、触摸、触控笔）
-                studentGrid.addEventListener('pointerdown', (e) => {
-                    const card = e.target.closest('.student-card');
-                    if (!card) return;
-                    if (e.pointerType === 'mouse' && e.button !== 0) return;
-                    if (!AppState.currentAssignmentId) {
-                        UI.showToast('该日期暂无作业，请先新建作业');
-                        return;
-                    }
-
-                    pressStartTime = Date.now();
-                    pressCardId = card.dataset.id;
-                    isLongPress = false;
-                    
-                    if (e.pointerType === 'touch') {
-                        touchStartY = e.clientY;
-                        touchStartX = e.clientX;
-                    }
-
-                    card.setPointerCapture(e.pointerId);
-
-                    if (AppState.bulkMode) {
-                        return;
-                    }
-
-                    // 启动长按定时器，到达时间自动弹出评分弹窗
-                    longPressTimer = setTimeout(() => {
-                        isLongPress = true;
-                        const student = AppState.data.students.find(s => s.id === pressCardId);
-                        if (student) {
-                            UI.showScoreModal(student);
+                if (studentGrid) {
+                    // 统一处理所有输入设备（鼠标、触摸、触控笔）
+                    studentGrid.addEventListener('pointerdown', (e) => {
+                        const card = e.target.closest('.student-card');
+                        if (!card) return;
+                        if (e.pointerType === 'mouse' && e.button !== 0) return;
+                        if (!AppState.currentAssignmentId) {
+                            UI.showToast('该日期暂无作业，请先新建作业');
+                            return;
                         }
-                    }, LONG_PRESS_DURATION);
-                });
 
-                studentGrid.addEventListener('pointerup', (e) => {
-                    const card = e.target.closest('.student-card');
-                    
-                    // 清除长按定时器
-                    if (longPressTimer) {
-                        clearTimeout(longPressTimer);
-                        longPressTimer = null;
-                    }
-                    
-                    // 如果已经触发了长按，不执行点击操作
-                    if (isLongPress) {
-                        pressCardId = null;
-                        return;
-                    }
-                    
-                    if (!card || pressCardId !== card.dataset.id) {
-                        pressCardId = null;
-                        return;
-                    }
+                        pressStartTime = Date.now();
+                        pressCardId = card.dataset.id;
+                        isLongPress = false;
+                        
+                        if (e.pointerType === 'touch') {
+                            touchStartY = e.clientY;
+                            touchStartX = e.clientX;
+                        }
 
-                    if (AppState.bulkMode) {
-                        AppState.toggleBulkSelection(pressCardId);
-                        UI.renderGrid();
-                        pressCardId = null;
-                        return;
-                    }
+                        card.setPointerCapture(e.pointerId);
 
-                    if (!AppState.currentAssignmentId) {
-                        UI.showToast('该日期暂无作业，请先新建作业');
-                        pressCardId = null;
-                        return;
-                    }
+                        if (AppState.bulkMode) {
+                            return;
+                        }
 
-                    // 短按：切换状态
-                    const student = AppState.data.students.find(s => s.id === pressCardId);
-                    if (student) {
-                        const record = AppState.getStudentRecord(pressCardId);
-                        const newStatus = record.status === 'submitted' ? 'pending' : 'submitted';
-                        const ok = AppState.setStudentRecord(pressCardId, { ...record, status: newStatus });
-                        if (!ok) {
+                        // 启动长按定时器，到达时间自动弹出评分弹窗
+                        longPressTimer = setTimeout(() => {
+                            isLongPress = true;
+                            const student = AppState.data.students.find(s => s.id === pressCardId);
+                            if (student) {
+                                UI.showScoreModal(student);
+                            }
+                        }, LONG_PRESS_DURATION);
+                    });
+
+                    studentGrid.addEventListener('pointerup', (e) => {
+                        const card = e.target.closest('.student-card');
+                        
+                        // 清除长按定时器
+                        if (longPressTimer) {
+                            clearTimeout(longPressTimer);
+                            longPressTimer = null;
+                        }
+                        
+                        // 如果已经触发了长按，不执行点击操作
+                        if (isLongPress) {
+                            pressCardId = null;
+                            return;
+                        }
+                        
+                        if (!card || pressCardId !== card.dataset.id) {
+                            pressCardId = null;
+                            return;
+                        }
+
+                        if (AppState.bulkMode) {
+                            AppState.toggleBulkSelection(pressCardId);
+                            UI.renderGrid();
+                            pressCardId = null;
+                            return;
+                        }
+
+                        if (!AppState.currentAssignmentId) {
                             UI.showToast('该日期暂无作业，请先新建作业');
                             pressCardId = null;
                             return;
                         }
-                        UI.renderGrid();
-                    }
 
-                    pressCardId = null;
-                });
+                        // 短按：切换状态
+                        const student = AppState.data.students.find(s => s.id === pressCardId);
+                        if (student) {
+                            const record = AppState.getStudentRecord(pressCardId);
+                            const newStatus = record.status === 'submitted' ? 'pending' : 'submitted';
+                            const ok = AppState.setStudentRecord(pressCardId, { ...record, status: newStatus });
+                            if (!ok) {
+                                UI.showToast('该日期暂无作业，请先新建作业');
+                                pressCardId = null;
+                                return;
+                            }
+                            UI.renderGrid();
+                        }
 
-                studentGrid.addEventListener('pointercancel', (e) => {
-                    if (longPressTimer) {
-                        clearTimeout(longPressTimer);
-                        longPressTimer = null;
-                    }
-                    pressCardId = null;
-                });
+                        pressCardId = null;
+                    });
 
-                // 触摸设备专用：检测滑动，阻止滑动时触发点击
-                studentGrid.addEventListener('touchmove', (e) => {
-                    if (!pressCardId) return;
-                    const touch = e.touches[0];
-                    const deltaY = Math.abs(touch.clientY - touchStartY);
-                    const deltaX = Math.abs(touch.clientX - touchStartX);
-                    if (deltaY > SCROLL_THRESHOLD || deltaX > SCROLL_THRESHOLD) {
-                        // 滑动时取消长按和点击
+                    studentGrid.addEventListener('pointercancel', () => {
                         if (longPressTimer) {
                             clearTimeout(longPressTimer);
                             longPressTimer = null;
                         }
                         pressCardId = null;
-                    }
-                }, { passive: true });
+                    });
 
-                // 触摸设备专用：阻止 touchend 后浏览器合成的 click 事件
-                studentGrid.addEventListener('touchend', (e) => {
-                    if (pressCardId) {
-                        e.preventDefault();
-                    }
-                    pressCardId = null;
-                });
+                    // 触摸设备专用：检测滑动，阻止滑动时触发点击
+                    studentGrid.addEventListener('touchmove', (e) => {
+                        if (!pressCardId) return;
+                        const touch = e.touches[0];
+                        const deltaY = Math.abs(touch.clientY - touchStartY);
+                        const deltaX = Math.abs(touch.clientX - touchStartX);
+                        if (deltaY > SCROLL_THRESHOLD || deltaX > SCROLL_THRESHOLD) {
+                            // 滑动时取消长按和点击
+                            if (longPressTimer) {
+                                clearTimeout(longPressTimer);
+                                longPressTimer = null;
+                            }
+                            pressCardId = null;
+                        }
+                    }, { passive: true });
 
-                // 防止右键菜单干扰
-                studentGrid.addEventListener('contextmenu', (e) => {
-                    if (e.target.closest('.student-card')) {
-                        e.preventDefault();
-                    }
-                });
+                    // 触摸设备专用：阻止 touchend 后浏览器合成的 click 事件
+                    studentGrid.addEventListener('touchend', (e) => {
+                        if (pressCardId) {
+                            e.preventDefault();
+                        }
+                        pressCardId = null;
+                    });
+
+                    // 防止右键菜单干扰
+                    studentGrid.addEventListener('contextmenu', (e) => {
+                        if (e.target.closest('.student-card')) {
+                            e.preventDefault();
+                        }
+                    });
+                }
 
                 // 评分弹窗
-                document.getElementById('closeModal').addEventListener('click', UI.hideScoreModal);
-                document.getElementById('scoreModal').addEventListener('click', (e) => {
+                onId('closeModal', 'click', UI.hideScoreModal);
+                onId('scoreModal', 'click', (e) => {
                     if (e.target.id === 'scoreModal') UI.hideScoreModal();
                 });
 
@@ -3475,10 +3488,9 @@
 
                 // 分数输入
                 const scoreInput = document.getElementById('scoreInput');
-                if (!scoreInput) return;
-                
-                // 限制输入范围（用于系统输入法输入的情况）
-                scoreInput.addEventListener('input', (e) => {
+                if (scoreInput) {
+                    // 限制输入范围（用于系统输入法输入的情况）
+                    scoreInput.addEventListener('input', (e) => {
                     let value = e.target.value;
                     
                     // 只允许数字和小数点
@@ -3501,29 +3513,29 @@
                         value = '';
                     }
                     
-                    e.target.value = value;
-                });
-
-                // 清除分数按钮 - 仅清空输入框，不保存
-                const clearScoreBtn = document.getElementById('clearScoreBtn');
-                if (clearScoreBtn) {
-                    clearScoreBtn.addEventListener('click', () => {
-                        scoreInput.value = '';
-                        scoreInput.focus();
+                        e.target.value = value;
                     });
-                }
 
-                // 清空按钮事件
-                document.querySelectorAll('.score-clear-btn').forEach(btn => {
-                    btn.addEventListener('click', () => {
-                        scoreInput.value = '';
-                        scoreInput.focus();
+                    // 清除分数按钮 - 仅清空输入框，不保存
+                    const clearScoreBtn = document.getElementById('clearScoreBtn');
+                    if (clearScoreBtn) {
+                        clearScoreBtn.addEventListener('click', () => {
+                            scoreInput.value = '';
+                            scoreInput.focus();
+                        });
+                    }
+
+                    // 清空按钮事件
+                    document.querySelectorAll('.score-clear-btn').forEach(btn => {
+                        btn.addEventListener('click', () => {
+                            scoreInput.value = '';
+                            scoreInput.focus();
+                        });
                     });
-                });
 
-                // 数字键盘事件处理
-                document.querySelectorAll('.numpad-btn').forEach(btn => {
-                    btn.addEventListener('click', () => {
+                    // 数字键盘事件处理
+                    document.querySelectorAll('.numpad-btn').forEach(btn => {
+                        btn.addEventListener('click', () => {
                         const action = btn.dataset.action;
                         let value = scoreInput.value || '';
 
@@ -3572,43 +3584,43 @@
                             return;
                         }
 
-                        scoreInput.value = value;
+                            scoreInput.value = value;
+                        });
                     });
-                });
 
                 // 确定按钮
-                const confirmBtn = document.querySelector('[data-action="confirm"]');
-                if (confirmBtn) {
-                    confirmBtn.addEventListener('click', () => {
-                    let value = scoreInput.value || '';
-                    if (value !== '') {
-                        const num = parseFloat(value);
-                        if (num > 100) value = '100';
+                    const confirmBtn = document.querySelector('[data-action="confirm"]');
+                    if (confirmBtn) {
+                        confirmBtn.addEventListener('click', () => {
+                            let value = scoreInput.value || '';
+                            if (value !== '') {
+                                const num = parseFloat(value);
+                                if (num > 100) value = '100';
+                            }
+                            scoreInput.value = value;
+                            if (!AppState.selectedStudent) return;
+                            if (!AppState.currentAssignmentId) {
+                                UI.showToast('该日期暂无作业，请先新建作业');
+                                return;
+                            }
+                            const score = value === '' ? null : parseFloat(value);
+                            if (score !== null && (isNaN(score) || score < 0 || score > 100)) {
+                                UI.showToast('请输入0-100之间的数字');
+                                return;
+                            }
+                            const ok = AppState.setStudentRecord(AppState.selectedStudent.id, { status: 'submitted', score });
+                            if (!ok) {
+                                UI.showToast('该日期暂无作业，请先新建作业');
+                                return;
+                            }
+                            UI.renderGrid();
+                            UI.showToast(score !== null ? `已登记: 已交 ${score}分` : '已登记: 已交');
+                            UI.hideScoreModal();
+                        });
                     }
-                    scoreInput.value = value;
-                    if (!AppState.selectedStudent) return;
-                    if (!AppState.currentAssignmentId) {
-                        UI.showToast('该日期暂无作业，请先新建作业');
-                        return;
-                    }
-                    const score = value === '' ? null : parseFloat(value);
-                    if (score !== null && (isNaN(score) || score < 0 || score > 100)) {
-                        UI.showToast('请输入0-100之间的数字');
-                        return;
-                    }
-                    const ok = AppState.setStudentRecord(AppState.selectedStudent.id, { status: 'submitted', score });
-                    if (!ok) {
-                        UI.showToast('该日期暂无作业，请先新建作业');
-                        return;
-                    }
-                    UI.renderGrid();
-                    UI.showToast(score !== null ? `已登记: 已交 ${score}分` : '已登记: 已交');
-                    UI.hideScoreModal();
-                    });
-                }
 
                 // 回车键 - 默认以"已交"状态保存（兼容Windows和Android）
-                scoreInput.addEventListener('keydown', (e) => {
+                    scoreInput.addEventListener('keydown', (e) => {
                     if (e.key === 'Enter' || e.keyCode === 13) {
                         e.preventDefault();
                         if (!AppState.selectedStudent) return;
@@ -3636,43 +3648,52 @@
                         UI.hideScoreModal();
                     }
                 });
+                }
 
                 // 主菜单
-                document.getElementById('menuBtn').addEventListener('click', () => {
+                onId('menuBtn', 'click', () => {
                     this.updateSwitches();
-                    document.getElementById('menuPanel').classList.add('show');
+                    const menuPanel = byId('menuPanel');
+                    if (menuPanel) menuPanel.classList.add('show');
                 });
 
-                document.getElementById('closeMenu').addEventListener('click', () => {
-                    document.getElementById('menuPanel').classList.remove('show');
+                onId('closeMenu', 'click', () => {
+                    const menuPanel = byId('menuPanel');
+                    if (menuPanel) menuPanel.classList.remove('show');
                 });
 
-                document.getElementById('fullnameSwitch').addEventListener('click', (e) => {
+                onId('fullnameSwitch', 'click', (e) => {
                     AppState.data.settings.showFullname = !AppState.data.settings.showFullname;
                     DataManager.save(AppState.data);
                     e.currentTarget.classList.toggle('on', AppState.data.settings.showFullname);
                     UI.renderGrid();
                 });
 
-                document.getElementById('assignmentItem').addEventListener('click', () => {
-                    document.getElementById('menuPanel').classList.remove('show');
+                onId('assignmentItem', 'click', () => {
+                    const menuPanel = byId('menuPanel');
+                    if (menuPanel) menuPanel.classList.remove('show');
                     openCalendarPanel();
                 });
 
-                document.getElementById('dataItem').addEventListener('click', () => {
-                    document.getElementById('menuPanel').classList.remove('show');
+                onId('dataItem', 'click', () => {
+                    const menuPanel = byId('menuPanel');
+                    if (menuPanel) menuPanel.classList.remove('show');
                     UI.setExportMode('json');
-                    document.getElementById('dataPanel').classList.add('show');
+                    const dataPanel = byId('dataPanel');
+                    if (dataPanel) dataPanel.classList.add('show');
                 });
 
-                document.getElementById('statsItem').addEventListener('click', () => {
-                    document.getElementById('menuPanel').classList.remove('show');
+                onId('statsItem', 'click', () => {
+                    const menuPanel = byId('menuPanel');
+                    if (menuPanel) menuPanel.classList.remove('show');
                     UI.updateStats();
-                    document.getElementById('statsPanel').classList.add('show');
+                    const statsPanel = byId('statsPanel');
+                    if (statsPanel) statsPanel.classList.add('show');
                 });
 
-                document.getElementById('markPendingMissingItem').addEventListener('click', () => {
-                    document.getElementById('menuPanel').classList.remove('show');
+                onId('markPendingMissingItem', 'click', () => {
+                    const menuPanel = byId('menuPanel');
+                    if (menuPanel) menuPanel.classList.remove('show');
                     if (!AppState.currentAssignmentId) {
                         UI.showToast('该日期暂无作业，请先新建作业');
                         return;
@@ -3688,21 +3709,22 @@
                     }
 
                     UI.renderGrid();
-                    if (document.getElementById('statsPanel').classList.contains('show')) {
+                    const statsPanel = byId('statsPanel');
+                    if (statsPanel && statsPanel.classList.contains('show')) {
                         UI.updateStats();
                     }
                     UI.showToast(changed === 0 ? '无需更新，当前作业无未登记' : `已更新 ${changed} 人为未交`);
                 });
 
                 // 开关
-                document.getElementById('contrastSwitch').addEventListener('click', (e) => {
+                onId('contrastSwitch', 'click', (e) => {
                     AppState.data.settings.highContrast = !AppState.data.settings.highContrast;
                     DataManager.save(AppState.data);
                     AppState.applySettings();
                     e.target.classList.toggle('on', AppState.data.settings.highContrast);
                 });
 
-                document.getElementById('animationSwitch').addEventListener('click', (e) => {
+                onId('animationSwitch', 'click', (e) => {
                     AppState.data.settings.noAnimation = !AppState.data.settings.noAnimation;
                     DataManager.save(AppState.data);
                     AppState.applySettings();
@@ -3710,7 +3732,7 @@
                 });
 
                 // 重置数据
-                document.getElementById('resetDataBtn').addEventListener('click', () => {
+                onId('resetDataBtn', 'click', () => {
                     if (confirm('确定要清空所有历史数据吗？学生名单将保留。')) {
                         DataManager.resetRecords();
                         AppState.data = DataManager.load();
@@ -3724,18 +3746,21 @@
                 });
 
                 // 统计面板
-                document.getElementById('closeStats').addEventListener('click', () => {
-                    document.getElementById('statsPanel').classList.remove('show');
+                onId('closeStats', 'click', () => {
+                    const statsPanel = byId('statsPanel');
+                    if (statsPanel) statsPanel.classList.remove('show');
                 });
 
-                document.getElementById('statsCollapse').addEventListener('click', () => {
-                    const header = document.getElementById('statsCollapse');
-                    const body = document.getElementById('statsCollapseBody');
+                onId('statsCollapse', 'click', () => {
+                    const header = byId('statsCollapse');
+                    const body = byId('statsCollapseBody');
+                    if (!header || !body) return;
                     const isCollapsed = body.classList.toggle('collapsed');
                     header.classList.toggle('collapsed', isCollapsed);
                 });
 
-                applyHistoryRange.addEventListener('click', () => {
+                on(applyHistoryRange, 'click', () => {
+                    if (!historyRangeInput) return;
                     const raw = historyRangeInput.value.trim();
                     const value = parseInt(raw, 10);
                     if (isNaN(value) || value < 1) {
@@ -3747,27 +3772,30 @@
                     UI.updateStats();
                 });
 
-                historyRangeInput.addEventListener('keydown', (e) => {
+                on(historyRangeInput, 'keydown', (e) => {
                     if (e.key === 'Enter') {
                         e.preventDefault();
-                        applyHistoryRange.click();
+                        if (applyHistoryRange) applyHistoryRange.click();
                     }
                 });
 
-                document.getElementById('closeData').addEventListener('click', () => {
-                    document.getElementById('dataPanel').classList.remove('show');
+                onId('closeData', 'click', () => {
+                    const dataPanel = byId('dataPanel');
+                    if (dataPanel) dataPanel.classList.remove('show');
                 });
 
-                document.getElementById('exportJsonBtn').addEventListener('click', () => {
+                onId('exportJsonBtn', 'click', () => {
                     UI.setExportMode('json');
                 });
 
-                document.getElementById('exportCsvBtn').addEventListener('click', () => {
+                onId('exportCsvBtn', 'click', () => {
                     UI.setExportMode('csv');
                 });
 
-                document.getElementById('confirmImport').addEventListener('click', () => {
-                    const text = document.getElementById('importText').value;
+                onId('confirmImport', 'click', () => {
+                    const importText = byId('importText');
+                    if (!importText) return;
+                    const text = importText.value;
                     const preview = DataManager.previewImport(text);
                     if (!preview.ok) {
                         UI.showToast(preview.error || '导入失败，请检查数据格式');
@@ -3804,19 +3832,22 @@
                         updateDateTrigger();
                         UI.renderGrid();
                         UI.showToast(backupKey ? `导入成功，已备份 ${backupKey}` : '导入成功');
-                        document.getElementById('dataPanel').classList.remove('show');
+                        const dataPanel = byId('dataPanel');
+                        if (dataPanel) dataPanel.classList.remove('show');
                     } else {
                         const restored = DataManager.restoreBackup(backupKey);
                         UI.showToast(restored ? '导入失败，已自动回滚' : '导入失败，且回滚失败');
                     }
                 });
 
-                document.getElementById('clearImport').addEventListener('click', () => {
-                    document.getElementById('importText').value = '';
+                onId('clearImport', 'click', () => {
+                    const importText = byId('importText');
+                    if (importText) importText.value = '';
                 });
 
-                document.getElementById('copyData').addEventListener('click', () => {
-                    const text = document.getElementById('exportText');
+                onId('copyData', 'click', () => {
+                    const text = byId('exportText');
+                    if (!text) return;
                     text.select();
                     document.execCommand('copy');
                     UI.showToast('已复制到剪贴板');
@@ -3830,18 +3861,25 @@
                             UI.renderGrid();
                         }
                         UI.hideScoreModal();
-                        document.getElementById('menuPanel').classList.remove('show');
-                        document.getElementById('statsPanel').classList.remove('show');
-                        document.getElementById('dataPanel').classList.remove('show');
-                        document.getElementById('calendarPanel').classList.remove('show');
+                        const menuPanel = byId('menuPanel');
+                        const statsPanel = byId('statsPanel');
+                        const dataPanel = byId('dataPanel');
+                        const calendarPanelEl = byId('calendarPanel');
+                        if (menuPanel) menuPanel.classList.remove('show');
+                        if (statsPanel) statsPanel.classList.remove('show');
+                        if (dataPanel) dataPanel.classList.remove('show');
+                        if (calendarPanelEl) calendarPanelEl.classList.remove('show');
                     }
                 });
             },
 
             updateSwitches() {
-                document.getElementById('fullnameSwitch').classList.toggle('on', AppState.data.settings.showFullname);
-                document.getElementById('contrastSwitch').classList.toggle('on', AppState.data.settings.highContrast);
-                document.getElementById('animationSwitch').classList.toggle('on', AppState.data.settings.noAnimation);
+                const fullnameSwitch = document.getElementById('fullnameSwitch');
+                const contrastSwitch = document.getElementById('contrastSwitch');
+                const animationSwitch = document.getElementById('animationSwitch');
+                if (fullnameSwitch) fullnameSwitch.classList.toggle('on', AppState.data.settings.showFullname);
+                if (contrastSwitch) contrastSwitch.classList.toggle('on', AppState.data.settings.highContrast);
+                if (animationSwitch) animationSwitch.classList.toggle('on', AppState.data.settings.noAnimation);
             }
         };
 
