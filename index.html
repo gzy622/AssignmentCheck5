@@ -3009,8 +3009,6 @@
         // ============ 事件处理 ============
         const Events = {
             init() {
-                let lastBackTime = 0;
-                let allowExit = false;
                 const byId = (id) => document.getElementById(id);
                 const on = (el, eventName, handler, options) => {
                     if (!el) return false;
@@ -3078,25 +3076,18 @@
                     if (afterToggle) afterToggle();
                     this.updateSwitches();
                 };
+                const handleEscapeAction = () => {
+                    if (AppState.bulkMode) {
+                        AppState.setBulkMode(false);
+                        UI.renderGrid();
+                    }
+                    closeAllPanels();
+                };
 
-                // 处理返回键：优先关闭面板；主界面双击返回退出
+                // Android 返回键行为与桌面 ESC 保持一致
                 history.pushState({ psa: true }, '');
                 window.addEventListener('popstate', () => {
-                    if (allowExit) return;
-                    if (closeAllPanels()) {
-                        history.pushState({ psa: true }, '');
-                        return;
-                    }
-
-                    const now = Date.now();
-                    if (now - lastBackTime < 1500) {
-                        allowExit = true;
-                        history.go(-1);
-                        return;
-                    }
-
-                    lastBackTime = now;
-                    UI.showToast('再按一次返回退出');
+                    handleEscapeAction();
                     history.pushState({ psa: true }, '');
                 });
 
@@ -3824,11 +3815,7 @@
                 // 键盘快捷键
                 document.addEventListener('keydown', (e) => {
                     if (e.key === 'Escape') {
-                        if (AppState.bulkMode) {
-                            AppState.setBulkMode(false);
-                            UI.renderGrid();
-                        }
-                        closeAllPanels();
+                        handleEscapeAction();
                     }
                 });
             },
