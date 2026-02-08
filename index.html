@@ -3876,12 +3876,29 @@
                     if (importText) importText.value = '';
                 });
 
-                onId('copyData', 'click', () => {
+                onId('copyData', 'click', async () => {
                     const text = byId('exportText');
                     if (!text) return;
+                    const value = text.value || '';
+                    if (!value) {
+                        UI.showToast('没有可复制的内容');
+                        return;
+                    }
+
+                    // 优先使用现代剪贴板 API；失败时回退到 execCommand
+                    if (navigator.clipboard && window.isSecureContext) {
+                        try {
+                            await navigator.clipboard.writeText(value);
+                            UI.showToast('已复制到剪贴板');
+                            return;
+                        } catch (e) {
+                            console.warn('Clipboard API 复制失败，尝试回退:', e);
+                        }
+                    }
+
                     text.select();
-                    document.execCommand('copy');
-                    UI.showToast('已复制到剪贴板');
+                    const copied = document.execCommand('copy');
+                    UI.showToast(copied ? '已复制到剪贴板（兼容模式）' : '复制失败，请手动复制');
                 });
 
                 this.updateSwitches();

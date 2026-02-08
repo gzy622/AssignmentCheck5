@@ -3,6 +3,7 @@
 ## 执行纪律（必须）
 - 每完成一步（1~6 中任意一条）后，必须在回报中给出对应 `git message`（Conventional Commit 前缀 + 简体中文描述）。
 - 若该步尚未提交，也必须先提供“建议提交信息（git message）”用于记录与确认。
+- 从现在起，所有回报中的 `git message` 必须放在 Markdown 代码块内，便于直接复制。
 
 ## 1. 安全修复（最高优先）
 - 将渲染层中涉及用户可控数据的 `innerHTML` 字符串拼接改为 DOM API + `textContent`。
