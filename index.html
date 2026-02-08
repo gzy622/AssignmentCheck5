@@ -1901,7 +1901,7 @@
             <div class="settings-section">
                 <div class="settings-title">导入数据</div>
                 <div class="settings-desc" style="margin-bottom: 12px;">粘贴 JSON / CSV 数据或学生名单（每行一个）</div>
-                <textarea class="textarea" id="importText" placeholder='{"students":[{"id":"1","name":"张三"}],"assignments":[{"id":"a1","name":"24/02/03作业1","date":"2024-02-03","order":1,"createdAt":1700000000000}],"records":{"a1":{}},"settings":{"historyCount":5},"version":"2.0.0"}'></textarea>
+                <textarea class="textarea" id="importText" placeholder='{"students":[{"id":"1","name":"张三"}],"assignments":[{"id":"a1","name":"24/02/03作业1","date":"2024-02-03","order":1,"createdAt":1700000000000}],"records":{"a1":{}},"settings":{"historyCount":7},"version":"2.0.0"}'></textarea>
                 <div class="btn-group">
                     <button class="btn btn-primary" id="confirmImport">确认导入</button>
                     <button class="btn" id="clearImport">清空</button>
@@ -2050,7 +2050,7 @@
                         highContrast: false,
                         noAnimation: false,
                         showFullname: false,
-                        historyCount: 5
+                        historyCount: 7
                     },
                     version: '2.0.0'
                 };
@@ -2632,7 +2632,7 @@
             },
 
             getHistoryStats(count) {
-                const limit = Math.max(1, count || this.data.settings.historyCount || 5);
+                const limit = Math.max(1, count || this.data.settings.historyCount || 7);
                 const assignments = this.getSortedAssignments().slice(0, limit);
                 const total = this.data.students.length;
                 return assignments.map(assignment => {
@@ -2919,7 +2919,7 @@
                 const assignmentLabel = currentAssignment ? currentAssignment.name : '-';
                 document.getElementById('statsAssignmentName').textContent = `当前作业：${assignmentLabel}`;
 
-                const historyCount = AppState.data.settings.historyCount || 5;
+                const historyCount = AppState.data.settings.historyCount || 7;
                 const historyInput = document.getElementById('historyRangeInput');
                 if (historyInput) historyInput.value = historyCount;
 
@@ -3543,15 +3543,6 @@
                         e.target.value = value;
                     });
 
-                    // 清除分数按钮 - 仅清空输入框，不保存
-                    const clearScoreBtn = document.getElementById('clearScoreBtn');
-                    if (clearScoreBtn) {
-                        clearScoreBtn.addEventListener('click', () => {
-                            scoreInput.value = '';
-                            scoreInput.focus();
-                        });
-                    }
-
                     // 清空按钮事件
                     document.querySelectorAll('.score-clear-btn').forEach(btn => {
                         btn.addEventListener('click', () => {
@@ -3614,37 +3605,6 @@
                             scoreInput.value = value;
                         });
                     });
-
-                // 确定按钮
-                    const confirmBtn = document.querySelector('[data-action="confirm"]');
-                    if (confirmBtn) {
-                        confirmBtn.addEventListener('click', () => {
-                            let value = scoreInput.value || '';
-                            if (value !== '') {
-                                const num = parseFloat(value);
-                                if (num > 100) value = '100';
-                            }
-                            scoreInput.value = value;
-                            if (!AppState.selectedStudent) return;
-                            if (!AppState.currentAssignmentId) {
-                                UI.showToast('该日期暂无作业，请先新建作业');
-                                return;
-                            }
-                            const score = value === '' ? null : parseFloat(value);
-                            if (score !== null && (isNaN(score) || score < 0 || score > 100)) {
-                                UI.showToast('请输入0-100之间的数字');
-                                return;
-                            }
-                            const ok = AppState.setStudentRecord(AppState.selectedStudent.id, { status: 'submitted', score });
-                            if (!ok) {
-                                UI.showToast('该日期暂无作业，请先新建作业');
-                                return;
-                            }
-                            UI.renderGrid();
-                            UI.showToast(score !== null ? `已登记: 已交 ${score}分` : '已登记: 已交');
-                            UI.hideScoreModal();
-                        });
-                    }
 
                 // 回车键 - 默认以"已交"状态保存（兼容Windows和Android）
                     scoreInput.addEventListener('keydown', (e) => {
