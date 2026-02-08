@@ -1203,6 +1203,35 @@
             color: var(--text-secondary);
         }
 
+        .assignment-item-actions {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            flex-shrink: 0;
+        }
+
+        .assignment-action-btn {
+            border: 1px solid var(--border);
+            background: var(--card);
+            color: var(--text-secondary);
+            border-radius: 8px;
+            padding: 4px 8px;
+            font-size: 11px;
+            line-height: 1;
+            cursor: pointer;
+            transition: var(--transition);
+        }
+
+        .assignment-action-btn:hover {
+            border-color: var(--primary);
+            color: var(--primary);
+        }
+
+        .assignment-action-btn.danger:hover {
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
         .range-row {
             display: flex;
             align-items: center;
@@ -1751,7 +1780,7 @@
                         <button class="btn" id="createAssignmentBtn">＋ 新建该日作业</button>
                     </div>
                     <div class="settings-desc" id="assignmentMeta" style="margin-top: 8px;">-</div>
-                    <div class="settings-desc" style="margin-top: 4px;">点击列表切换作业</div>
+                    <div class="settings-desc" style="margin-top: 4px;">点击列表切换作业，可编辑或删除</div>
                     <div class="assignment-list" id="assignmentList" style="margin-top: 10px;"></div>
                 </div>
             </div>
@@ -2535,6 +2564,45 @@
                 DataManager.save(this.data);
             },
 
+            renameAssignmentById(id, name) {
+                const assignment = this.data.assignments.find(a => a.id === id);
+                if (!assignment) return false;
+                assignment.name = name;
+                DataManager.save(this.data);
+                return true;
+            },
+
+            resequenceAssignmentsForDate(dateStr) {
+                const sameDate = this.data.assignments
+                    .filter(a => a.date === dateStr)
+                    .sort((a, b) => {
+                        if ((a.order || 0) === (b.order || 0)) {
+                            return (a.createdAt || 0) - (b.createdAt || 0);
+                        }
+                        return (a.order || 0) - (b.order || 0);
+                    });
+                sameDate.forEach((assignment, index) => {
+                    assignment.order = index + 1;
+                });
+            },
+
+            removeAssignmentById(id) {
+                const target = this.data.assignments.find(a => a.id === id);
+                if (!target) return { ok: false };
+
+                this.data.assignments = this.data.assignments.filter(a => a.id !== id);
+                delete this.data.records[id];
+                this.resequenceAssignmentsForDate(target.date);
+
+                if (this.currentAssignmentId === id) {
+                    const sameDate = this.getAssignmentsForDate(target.date);
+                    this.currentAssignmentId = sameDate.length > 0 ? sameDate[0].id : null;
+                }
+
+                DataManager.save(this.data);
+                return { ok: true, removed: target };
+            },
+
             getStudentRecord(studentId) {
                 const assignmentId = this.currentAssignmentId;
                 if (!assignmentId) {
@@ -2855,15 +2923,31 @@
                     metaEl.className = 'assignment-item-meta';
                     metaEl.textContent = `${assignment.date} · 第${assignment.order}项`;
 
-                    const action = document.createElement('span');
-                    action.style.fontSize = '14px';
-                    action.style.color = 'var(--text-secondary)';
-                    action.textContent = '切换';
+                    const actions = document.createElement('div');
+                    actions.className = 'assignment-item-actions';
+
+                    const editBtn = document.createElement('button');
+                    editBtn.type = 'button';
+                    editBtn.className = 'assignment-action-btn';
+                    editBtn.dataset.action = 'edit';
+                    editBtn.dataset.id = assignment.id;
+                    editBtn.textContent = '编辑';
+                    editBtn.setAttribute('aria-label', `编辑作业 ${assignment.name || ''}`);
+
+                    const removeBtn = document.createElement('button');
+                    removeBtn.type = 'button';
+                    removeBtn.className = 'assignment-action-btn danger';
+                    removeBtn.dataset.action = 'remove';
+                    removeBtn.dataset.id = assignment.id;
+                    removeBtn.textContent = '删除';
+                    removeBtn.setAttribute('aria-label', `删除作业 ${assignment.name || ''}`);
 
                     info.appendChild(nameEl);
                     info.appendChild(metaEl);
+                    actions.appendChild(editBtn);
+                    actions.appendChild(removeBtn);
                     item.appendChild(info);
-                    item.appendChild(action);
+                    item.appendChild(actions);
                     fragment.appendChild(item);
                 });
                 list.appendChild(fragment);
@@ -3348,7 +3432,52 @@
                 on(assignmentList, 'click', (e) => {
                     const item = e.target.closest('.assignment-item');
                     if (!item) return;
-                    AppState.setCurrentAssignment(item.dataset.id);
+
+                    const actionBtn = e.target.closest('[data-action]');
+                    const assignmentId = item.dataset.id;
+                    if (!assignmentId) return;
+
+                    if (actionBtn) {
+                        const action = actionBtn.dataset.action;
+                        if (action === 'edit') {
+                            AppState.setCurrentAssignment(assignmentId);
+                            const current = AppState.getCurrentAssignment();
+                            if (!current) return;
+                            const nextName = prompt('编辑作业名称', current.name || '');
+                            if (nextName === null) return;
+                            const trimmed = nextName.trim();
+                            if (!trimmed) {
+                                UI.showToast('作业名称不能为空');
+                                return;
+                            }
+                            AppState.renameAssignmentById(assignmentId, trimmed);
+                            updateDateTrigger();
+                            UI.renderGrid();
+                            UI.renderAssignmentList();
+                            UI.updateAssignmentMeta();
+                            if (assignmentNameInput) assignmentNameInput.value = trimmed;
+                            UI.showToast('作业名称已更新');
+                        } else if (action === 'remove') {
+                            const target = AppState.data.assignments.find(a => a.id === assignmentId);
+                            if (!target) return;
+                            const ok = confirm(`确认删除“${target.name}”？该作业的登记记录也会被移除。`);
+                            if (!ok) return;
+                            const removed = AppState.removeAssignmentById(assignmentId);
+                            if (!removed.ok) return;
+                            updateDateTrigger();
+                            UI.renderGrid();
+                            UI.renderAssignmentList();
+                            UI.updateAssignmentMeta();
+                            if (assignmentNameInput) {
+                                const current = AppState.getCurrentAssignment();
+                                assignmentNameInput.value = current ? current.name : '';
+                            }
+                            UI.showToast(`已删除: ${target.name}`);
+                        }
+                        return;
+                    }
+
+                    AppState.setCurrentAssignment(assignmentId);
                     updateDateTrigger();
                     UI.renderGrid();
                     UI.renderAssignmentList();
@@ -3360,6 +3489,7 @@
                 });
                 on(assignmentList, 'keydown', (e) => {
                     if (e.key !== 'Enter' && e.key !== ' ') return;
+                    if (e.target.closest('[data-action]')) return;
                     const item = e.target.closest('.assignment-item');
                     if (!item) return;
                     e.preventDefault();
