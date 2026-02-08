@@ -3009,6 +3009,9 @@
         // ============ 事件处理 ============
         const Events = {
             init() {
+                let lastBackTime = 0;
+                let allowExit = false;
+                const BACK_EXIT_INTERVAL = 1500;
                 const byId = (id) => document.getElementById(id);
                 const on = (el, eventName, handler, options) => {
                     if (!el) return false;
@@ -3036,6 +3039,10 @@
                             closed = true;
                         }
                     });
+                    const scoreModal = byId('scoreModal');
+                    if (scoreModal && scoreModal.classList.contains('show')) {
+                        closed = true;
+                    }
                     UI.hideScoreModal();
                     return closed;
                 };
@@ -3077,17 +3084,39 @@
                     this.updateSwitches();
                 };
                 const handleEscapeAction = () => {
+                    let handled = false;
                     if (AppState.bulkMode) {
                         AppState.setBulkMode(false);
                         UI.renderGrid();
+                        handled = true;
                     }
-                    closeAllPanels();
+                    if (closeAllPanels()) {
+                        handled = true;
+                    }
+                    return handled;
                 };
 
-                // Android 返回键行为与桌面 ESC 保持一致
+                // Android 返回键：优先按 ESC 关闭交互层；主界面双击返回才退出
                 history.pushState({ psa: true }, '');
                 window.addEventListener('popstate', () => {
-                    handleEscapeAction();
+                    if (allowExit) return;
+
+                    const handled = handleEscapeAction();
+                    if (handled) {
+                        lastBackTime = 0;
+                        history.pushState({ psa: true }, '');
+                        return;
+                    }
+
+                    const now = Date.now();
+                    if (now - lastBackTime < BACK_EXIT_INTERVAL) {
+                        allowExit = true;
+                        history.back();
+                        return;
+                    }
+
+                    lastBackTime = now;
+                    UI.showToast('再按一次返回退出');
                     history.pushState({ psa: true }, '');
                 });
 
