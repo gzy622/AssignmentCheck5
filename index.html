@@ -1094,6 +1094,50 @@
         }
 
         .settings-item:last-child { border-bottom: none; }
+        .settings-item-main { min-width: 0; flex: 1; }
+        .settings-action-item { cursor: pointer; transition: var(--transition); }
+        .settings-action-item:active { background: var(--bg); }
+        .settings-nav-indicator {
+            width: 28px;
+            height: 28px;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            font-size: 16px;
+            font-weight: 600;
+            flex-shrink: 0;
+            transition: var(--transition);
+        }
+        .settings-action-item:hover .settings-nav-indicator,
+        .settings-action-item:active .settings-nav-indicator {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: var(--bg);
+        }
+        .settings-action-badge {
+            min-width: 42px;
+            height: 28px;
+            padding: 0 10px;
+            border: 1px solid var(--border);
+            border-radius: 999px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text-secondary);
+            font-size: 12px;
+            font-weight: 600;
+            flex-shrink: 0;
+            transition: var(--transition);
+        }
+        .settings-action-item:hover .settings-action-badge,
+        .settings-action-item:active .settings-action-badge {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: var(--bg);
+        }
 
         .settings-label { font-size: 15px; }
 
@@ -1781,34 +1825,6 @@
         </div>
     </div>
 
-    <!-- 设置面板 -->
-    <div class="settings-panel" id="settingsPanel">
-        <div class="settings-header">
-            <span style="font-size: 18px; font-weight: 600;">设置</span>
-            <button class="icon-btn" id="closeSettings">✕</button>
-        </div>
-        <div class="settings-content">
-            <div class="settings-section">
-                <div class="settings-title">数据管理</div>
-                <div class="settings-item" style="flex-direction: column; align-items: stretch; gap: 8px;">
-                    <div class="settings-label">新学期初始化</div>
-                    <div class="settings-desc">清空所有历史数据，但保留学生名单</div>
-                    <button class="btn" id="resetDataBtn" style="margin-top: 8px; color: var(--danger); border-color: var(--danger);">
-                        🗑️ 重置数据
-                    </button>
-                </div>
-            </div>
-
-            <div class="settings-section">
-                <div class="settings-title">关于</div>
-                <div class="settings-item">
-                    <div class="settings-label">版本</div>
-                    <span style="color: var(--text-secondary);">2.0.0</span>
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- 统计面板 -->
     <div class="settings-panel" id="statsPanel">
         <div class="settings-header">
@@ -1905,40 +1921,33 @@
         <div class="settings-content">
             <div class="settings-section">
                 <div class="settings-title">数据</div>
-                <div class="settings-item" id="importItem" style="cursor: pointer;">
-                    <div>
-                        <div class="settings-label">导入数据</div>
-                        <div class="settings-desc">从JSON/CSV/文本导入</div>
+                <div class="settings-item settings-action-item" id="dataItem">
+                    <div class="settings-item-main">
+                        <div class="settings-label">导入/导出数据</div>
+                        <div class="settings-desc">支持 JSON/CSV 导入与导出</div>
                     </div>
-                    <span style="font-size: 20px;">📥</span>
-                </div>
-                <div class="settings-item" id="exportItem" style="cursor: pointer;">
-                    <div>
-                        <div class="settings-label">导出数据</div>
-                        <div class="settings-desc">备份数据到剪贴板</div>
-                    </div>
-                    <span style="font-size: 20px;">📤</span>
+                    <span class="settings-nav-indicator" aria-hidden="true">›</span>
                 </div>
             </div>
 
             <div class="settings-section">
                 <div class="settings-title">显示</div>
-                <div class="settings-item" id="fullnameToggleItem" style="cursor: pointer;">
-                    <div>
+                <div class="settings-item">
+                    <div class="settings-item-main">
                         <div class="settings-label">完整姓名</div>
                         <div class="settings-desc">显示学生全名和学号</div>
                     </div>
-                    <span style="font-size: 20px;">👤</span>
+                    <div class="switch" id="fullnameSwitch"></div>
                 </div>
                 <div class="settings-item">
-                    <div>
+                    <div class="settings-item-main">
                         <div class="settings-label">高对比度模式</div>
                         <div class="settings-desc">适应强光环境</div>
                     </div>
                     <div class="switch" id="contrastSwitch"></div>
                 </div>
                 <div class="settings-item">
-                    <div>
+                    <div class="settings-item-main">
                         <div class="settings-label">禁用动画</div>
                         <div class="settings-desc">提升老旧设备性能</div>
                     </div>
@@ -1948,33 +1957,41 @@
 
             <div class="settings-section">
                 <div class="settings-title">更多</div>
-                <div class="settings-item" id="markPendingMissingItem" style="cursor: pointer;">
-                    <div>
+                <div class="settings-item settings-action-item" id="markPendingMissingItem">
+                    <div class="settings-item-main">
                         <div class="settings-label">未登记转未交</div>
                         <div class="settings-desc">一键将当前作业未登记标记为未交</div>
                     </div>
-                    <span style="font-size: 20px;">⚠</span>
+                    <span class="settings-action-badge">执行</span>
                 </div>
-                <div class="settings-item" id="assignmentItem" style="cursor: pointer;">
-                    <div>
+                <div class="settings-item settings-action-item" id="assignmentItem">
+                    <div class="settings-item-main">
                         <div class="settings-label">作业管理</div>
                         <div class="settings-desc">新增、切换、重命名</div>
                     </div>
-                    <span style="font-size: 20px;">📝</span>
+                    <span class="settings-nav-indicator" aria-hidden="true">›</span>
                 </div>
-                <div class="settings-item" id="statsItem" style="cursor: pointer;">
-                    <div>
+                <div class="settings-item settings-action-item" id="statsItem">
+                    <div class="settings-item-main">
                         <div class="settings-label">统计</div>
                         <div class="settings-desc">查看提交统计</div>
                     </div>
-                    <span style="font-size: 20px;">📊</span>
+                    <span class="settings-nav-indicator" aria-hidden="true">›</span>
                 </div>
-                <div class="settings-item" id="settingsItem" style="cursor: pointer;">
-                    <div>
-                        <div class="settings-label">设置</div>
-                        <div class="settings-desc">显示、数据管理等</div>
-                    </div>
-                    <span style="font-size: 20px;">⚙️</span>
+            </div>
+
+            <div class="settings-section">
+                <div class="settings-title">设置</div>
+                <div class="settings-item" style="flex-direction: column; align-items: stretch; gap: 8px;">
+                    <div class="settings-label">新学期初始化</div>
+                    <div class="settings-desc">清空所有历史数据，但保留学生名单</div>
+                    <button class="btn" id="resetDataBtn" style="margin-top: 8px; color: var(--danger); border-color: var(--danger);">
+                        🗑️ 重置数据
+                    </button>
+                </div>
+                <div class="settings-item">
+                    <div class="settings-label">版本</div>
+                    <span style="color: var(--text-secondary);">2.0.0</span>
                 </div>
             </div>
         </div>
@@ -2707,7 +2724,7 @@
 
                 const closeAllPanels = () => {
                     let closed = false;
-                    const panels = ['menuPanel', 'settingsPanel', 'statsPanel', 'dataPanel', 'calendarPanel'];
+                    const panels = ['menuPanel', 'statsPanel', 'dataPanel', 'calendarPanel'];
                     panels.forEach(id => {
                         const panel = document.getElementById(id);
                         if (panel && panel.classList.contains('show')) {
@@ -3343,6 +3360,7 @@
 
                 // 主菜单
                 document.getElementById('menuBtn').addEventListener('click', () => {
+                    this.updateSwitches();
                     document.getElementById('menuPanel').classList.add('show');
                 });
 
@@ -3350,11 +3368,11 @@
                     document.getElementById('menuPanel').classList.remove('show');
                 });
 
-                document.getElementById('fullnameToggleItem').addEventListener('click', () => {
+                document.getElementById('fullnameSwitch').addEventListener('click', (e) => {
                     AppState.data.settings.showFullname = !AppState.data.settings.showFullname;
                     DataManager.save(AppState.data);
+                    e.currentTarget.classList.toggle('on', AppState.data.settings.showFullname);
                     UI.renderGrid();
-                    document.getElementById('menuPanel').classList.remove('show');
                 });
 
                 document.getElementById('assignmentItem').addEventListener('click', () => {
@@ -3362,13 +3380,7 @@
                     openCalendarPanel();
                 });
 
-                document.getElementById('importItem').addEventListener('click', () => {
-                    document.getElementById('menuPanel').classList.remove('show');
-                    document.getElementById('dataPanel').classList.add('show');
-                    document.getElementById('importText').focus();
-                });
-
-                document.getElementById('exportItem').addEventListener('click', () => {
+                document.getElementById('dataItem').addEventListener('click', () => {
                     document.getElementById('menuPanel').classList.remove('show');
                     UI.setExportMode('json');
                     document.getElementById('dataPanel').classList.add('show');
@@ -3401,17 +3413,6 @@
                         UI.updateStats();
                     }
                     UI.showToast(changed === 0 ? '无需更新，当前作业无未登记' : `已更新 ${changed} 人为未交`);
-                });
-
-                document.getElementById('settingsItem').addEventListener('click', () => {
-                    document.getElementById('menuPanel').classList.remove('show');
-                    document.getElementById('settingsPanel').classList.add('show');
-                    this.updateSwitches();
-                });
-
-                // 设置面板
-                document.getElementById('closeSettings').addEventListener('click', () => {
-                    document.getElementById('settingsPanel').classList.remove('show');
                 });
 
                 // 开关
@@ -3527,7 +3528,6 @@
                         }
                         UI.hideScoreModal();
                         document.getElementById('menuPanel').classList.remove('show');
-                        document.getElementById('settingsPanel').classList.remove('show');
                         document.getElementById('statsPanel').classList.remove('show');
                         document.getElementById('dataPanel').classList.remove('show');
                         document.getElementById('calendarPanel').classList.remove('show');
@@ -3536,6 +3536,7 @@
             },
 
             updateSwitches() {
+                document.getElementById('fullnameSwitch').classList.toggle('on', AppState.data.settings.showFullname);
                 document.getElementById('contrastSwitch').classList.toggle('on', AppState.data.settings.highContrast);
                 document.getElementById('animationSwitch').classList.toggle('on', AppState.data.settings.noAnimation);
             }
