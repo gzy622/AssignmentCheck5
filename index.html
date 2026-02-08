@@ -3014,6 +3014,11 @@
                 const BACK_EXIT_INTERVAL = 1500;
                 const BACK_RELEASE_WINDOW = 800;
                 let backTrapArmed = false;
+                let backTrapSeq = 0;
+                const BACK_TRAP_PARAM = '__psa_back_trap__';
+                const backTrapBaseUrl = new URL(window.location.href);
+                backTrapBaseUrl.searchParams.delete(BACK_TRAP_PARAM);
+                const BACK_TRAP_BASE_URL = `${backTrapBaseUrl.pathname}${backTrapBaseUrl.search}${backTrapBaseUrl.hash}`;
                 const byId = (id) => document.getElementById(id);
                 const on = (el, eventName, handler, options) => {
                     if (!el) return false;
@@ -3097,10 +3102,24 @@
                     }
                     return handled;
                 };
+                const buildBackTrapUrl = (seq) => {
+                    const trapUrl = new URL(BACK_TRAP_BASE_URL, window.location.href);
+                    trapUrl.searchParams.set(BACK_TRAP_PARAM, String(seq));
+                    return `${trapUrl.pathname}${trapUrl.search}${trapUrl.hash}`;
+                };
                 const armBackTrap = () => {
                     if (backTrapArmed) return;
-                    history.pushState({ __psaBackTrap: true, t: Date.now() }, '');
-                    backTrapArmed = true;
+                    const seq = ++backTrapSeq;
+                    const trapState = { __psaBackTrap: true, t: Date.now(), seq };
+                    try {
+                        // 先推入临时唯一 URL，避免部分 Firefox 内核合并同 URL 历史项。
+                        history.pushState(trapState, '', buildBackTrapUrl(seq));
+                        // 再恢复为原 URL，保证地址栏保持稳定。
+                        history.replaceState(trapState, '', BACK_TRAP_BASE_URL);
+                        backTrapArmed = true;
+                    } catch {
+                        backTrapArmed = false;
+                    }
                 };
                 const rearmBackTrap = () => {
                     backTrapArmed = false;
