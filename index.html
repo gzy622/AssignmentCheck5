@@ -1876,7 +1876,7 @@
         <div class="settings-content">
             <div class="settings-section">
                 <div class="settings-title">导入数据</div>
-                <div class="settings-desc" style="margin-bottom: 12px;">粘贴 JSON 数据或学生名单（每行一个）</div>
+                <div class="settings-desc" style="margin-bottom: 12px;">粘贴 JSON / CSV 数据或学生名单（每行一个）</div>
                 <textarea class="textarea" id="importText" placeholder='{"students":[{"id":"1","name":"张三"}],"assignments":[{"id":"a1","name":"24/02/03作业1","date":"2024-02-03","order":1,"createdAt":1700000000000}],"records":{"a1":{}},"settings":{"historyCount":5},"version":"2.0.0"}'></textarea>
                 <div class="btn-group">
                     <button class="btn btn-primary" id="confirmImport">确认导入</button>
@@ -1885,7 +1885,11 @@
             </div>
             <div class="settings-section">
                 <div class="settings-title">导出数据</div>
-                <div class="settings-desc" style="margin-bottom: 12px;">复制下方数据进行备份</div>
+                <div class="settings-desc" style="margin-bottom: 12px;">选择 JSON 或 CSV 复制备份</div>
+                <div class="btn-group" style="margin-bottom: 8px;">
+                    <button class="btn btn-primary" id="exportJsonBtn">导出 JSON</button>
+                    <button class="btn" id="exportCsvBtn">导出 CSV</button>
+                </div>
                 <textarea class="textarea" id="exportText" readonly></textarea>
                 <button class="btn btn-primary" id="copyData" style="width: 100%; margin-top: 12px;">📋 复制到剪贴板</button>
             </div>
@@ -1904,7 +1908,7 @@
                 <div class="settings-item" id="importItem" style="cursor: pointer;">
                     <div>
                         <div class="settings-label">导入数据</div>
-                        <div class="settings-desc">从JSON或文本导入</div>
+                        <div class="settings-desc">从JSON/CSV/文本导入</div>
                     </div>
                     <span style="font-size: 20px;">📥</span>
                 </div>
@@ -2072,6 +2076,100 @@
                 return JSON.stringify(data, null, 2);
             },
 
+            exportCSV(assignmentId) {
+                const data = this.load();
+                const records = assignmentId ? data.records[assignmentId] || {} : {};
+                const rows = [['id', 'name', 'status', 'score']];
+                data.students.forEach(student => {
+                    const record = records[student.id] || {};
+                    const statusText = this.getStatusText(record.status);
+                    const scoreText = record.score === null || record.score === undefined ? '' : record.score;
+                    rows.push([student.id, student.name, statusText, scoreText]);
+                });
+                return rows.map(row => row.map(cell => this.escapeCsvValue(cell)).join(',')).join('\n');
+            },
+
+            escapeCsvValue(value) {
+                if (value === null || value === undefined) return '';
+                const text = String(value);
+                if (/[",\n]/.test(text)) {
+                    return `"${text.replace(/"/g, '""')}"`;
+                }
+                return text;
+            },
+
+            parseCsv(text) {
+                const lines = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n').filter(line => line.trim());
+                if (lines.length === 0) return [];
+                const delimiter = this.detectCsvDelimiter(lines[0]);
+                return lines.map(line => this.parseCsvLine(line, delimiter));
+            },
+
+            detectCsvDelimiter(line) {
+                const candidates = [',', '\t', ';'];
+                let best = ',';
+                let bestCount = -1;
+                candidates.forEach(delim => {
+                    const count = line.split(delim).length - 1;
+                    if (count > bestCount) {
+                        bestCount = count;
+                        best = delim;
+                    }
+                });
+                return best;
+            },
+
+            parseCsvLine(line, delimiter) {
+                const result = [];
+                let current = '';
+                let inQuotes = false;
+                for (let i = 0; i < line.length; i++) {
+                    const char = line[i];
+                    if (char === '"') {
+                        if (inQuotes && line[i + 1] === '"') {
+                            current += '"';
+                            i++;
+                        } else {
+                            inQuotes = !inQuotes;
+                        }
+                    } else if (char === delimiter && !inQuotes) {
+                        result.push(current.trim());
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+                result.push(current.trim());
+                return result;
+            },
+
+            getStatusText(status) {
+                if (!status) return '未登记';
+                const map = {
+                    submitted: '已交',
+                    late: '迟交',
+                    missing: '未交',
+                    pending: '未登记'
+                };
+                return map[status] || '';
+            },
+
+            parseStatusValue(value) {
+                if (!value) return 'pending';
+                const normalized = String(value).trim().toLowerCase();
+                const map = {
+                    submitted: 'submitted',
+                    late: 'late',
+                    missing: 'missing',
+                    pending: 'pending',
+                    '已交': 'submitted',
+                    '迟交': 'late',
+                    '未交': 'missing',
+                    '未登记': 'pending'
+                };
+                return map[normalized] || 'pending';
+            },
+
             import(jsonStr) {
                 try {
                     const data = JSON.parse(jsonStr);
@@ -2080,6 +2178,57 @@
                         return true;
                     }
                 } catch (e) {
+                    // 尝试解析为 CSV
+                    const csvRows = this.parseCsv(jsonStr);
+                    if (csvRows.length > 0) {
+                        const header = csvRows[0].map(col => col.trim());
+                        const hasHeader = header.some(col => ['id', '学号', '姓名', 'name', 'status', 'score', '状态', '分数'].includes(col.toLowerCase()));
+                        const dataRows = hasHeader ? csvRows.slice(1) : csvRows;
+                        const headerMap = {};
+                        if (hasHeader) {
+                            header.forEach((col, index) => {
+                                const key = col.trim().toLowerCase();
+                                headerMap[key] = index;
+                            });
+                        }
+                        const students = [];
+                        const records = {};
+                        dataRows.forEach((row, i) => {
+                            const rawId = hasHeader ? row[headerMap.id ?? headerMap['学号'] ?? -1] : (row.length > 1 ? row[0] : '');
+                            const rawName = hasHeader ? row[headerMap.name ?? headerMap['姓名'] ?? 1] : (row.length > 1 ? row[1] : row[0]);
+                            const id = rawId;
+                            const name = rawName;
+                            const safeId = id ? String(id).trim() : String(i + 1).padStart(2, '0');
+                            const safeName = name ? String(name).trim() : String(id || '').trim() || `学生${safeId}`;
+                            students.push({ id: safeId, name: safeName });
+
+                            if (hasHeader && (headerMap.status !== undefined || headerMap.score !== undefined || headerMap['状态'] !== undefined || headerMap['分数'] !== undefined)) {
+                                const statusValue = row[headerMap.status ?? headerMap['状态'] ?? -1];
+                                const scoreValue = row[headerMap.score ?? headerMap['分数'] ?? -1];
+                                const status = this.parseStatusValue(statusValue);
+                                const score = scoreValue === undefined || scoreValue === '' ? null : parseFloat(scoreValue);
+                                if (!records[safeId]) {
+                                    records[safeId] = {};
+                                }
+                                records[safeId] = {
+                                    status,
+                                    score: isNaN(score) ? null : score
+                                };
+                            }
+                        });
+                        if (students.length > 0) {
+                            const today = getLocalDateString(new Date());
+                            const assignment = this.createAssignment(today, 1);
+                            const newData = {
+                                ...this.getDefaultData(),
+                                students,
+                                assignments: [assignment],
+                                records: { [assignment.id]: records }
+                            };
+                            this.save(newData);
+                            return true;
+                        }
+                    }
                     // 尝试解析为纯学生名单
                     const lines = jsonStr.trim().split('\n').filter(l => l.trim());
                     if (lines.length > 0) {
@@ -2420,6 +2569,20 @@
                 }
                 const assignmentsForDate = AppState.getAssignmentsForDate(assignment.date);
                 metaEl.textContent = `${assignment.date} · 第${assignment.order}项/共${assignmentsForDate.length}项`;
+            },
+
+            setExportMode(mode) {
+                const exportText = document.getElementById('exportText');
+                const jsonBtn = document.getElementById('exportJsonBtn');
+                const csvBtn = document.getElementById('exportCsvBtn');
+                if (!exportText || !jsonBtn || !csvBtn) return;
+                if (mode === 'csv') {
+                    exportText.value = DataManager.exportCSV(AppState.currentAssignmentId);
+                } else {
+                    exportText.value = DataManager.export();
+                }
+                jsonBtn.classList.toggle('btn-primary', mode !== 'csv');
+                csvBtn.classList.toggle('btn-primary', mode === 'csv');
             },
 
             renderAssignmentList() {
@@ -3207,7 +3370,7 @@
 
                 document.getElementById('exportItem').addEventListener('click', () => {
                     document.getElementById('menuPanel').classList.remove('show');
-                    document.getElementById('exportText').value = DataManager.export();
+                    UI.setExportMode('json');
                     document.getElementById('dataPanel').classList.add('show');
                 });
 
@@ -3313,6 +3476,14 @@
 
                 document.getElementById('closeData').addEventListener('click', () => {
                     document.getElementById('dataPanel').classList.remove('show');
+                });
+
+                document.getElementById('exportJsonBtn').addEventListener('click', () => {
+                    UI.setExportMode('json');
+                });
+
+                document.getElementById('exportCsvBtn').addEventListener('click', () => {
+                    UI.setExportMode('csv');
                 });
 
                 document.getElementById('confirmImport').addEventListener('click', () => {
