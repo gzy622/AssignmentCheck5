@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>作业提交追踪工具 PSA</title>
     <style>
         :root {
@@ -1097,6 +1097,14 @@
         .settings-item-main { min-width: 0; flex: 1; }
         .settings-action-item { cursor: pointer; transition: var(--transition); }
         .settings-action-item:active { background: var(--bg); }
+        .settings-action-item:focus-visible,
+        .switch:focus-visible,
+        .assignment-item:focus-visible,
+        .stats-collapse:focus-visible {
+            outline: 2px solid var(--primary);
+            outline-offset: 2px;
+            border-radius: var(--radius-sm);
+        }
         .settings-nav-indicator {
             width: 28px;
             height: 28px;
@@ -1694,7 +1702,7 @@
     <!-- 头部 -->
     <header class="header">
         <div class="header-top">
-            <button class="date-trigger" id="dateTrigger">
+            <button class="date-trigger" id="dateTrigger" aria-label="选择日期和作业">
                 <span class="date-trigger-info">
                     <span class="date-trigger-primary" id="dateTriggerPrimary">作业</span>
                     <span class="date-trigger-secondary" id="dateTriggerSecondary">2026-02-03 今天</span>
@@ -1704,11 +1712,11 @@
                 <span class="header-stat-value" id="headerSubmittedValue">0</span>
             </div>
             <div class="date-nav-group">
-                <button class="date-nav" id="toggleViewMode" title="切换显示模式">👤</button>
-                <button class="date-nav" id="toggleBulk" title="批量选择">☑</button>
+                <button class="date-nav" id="toggleViewMode" title="切换显示模式" aria-label="切换显示模式">👤</button>
+                <button class="date-nav" id="toggleBulk" title="批量选择" aria-label="批量选择">☑</button>
             </div>
             <div class="header-actions">
-                <button class="icon-btn" id="menuBtn" title="菜单">☰</button>
+                <button class="icon-btn" id="menuBtn" title="菜单" aria-label="打开菜单">☰</button>
             </div>
         </div>
     </header>
@@ -1717,10 +1725,10 @@
     <div class="calendar-panel" id="calendarPanel">
         <div class="calendar-content">
             <div class="calendar-header">
-                <button class="calendar-nav" id="calendarPrevMonth">◀</button>
+                <button class="calendar-nav" id="calendarPrevMonth" aria-label="上个月">◀</button>
                 <span class="calendar-month" id="calendarMonth">2026年2月</span>
-                <button class="calendar-nav" id="calendarNextMonth">▶</button>
-                <button class="calendar-close-btn" id="calendarClose">✕</button>
+                <button class="calendar-nav" id="calendarNextMonth" aria-label="下个月">▶</button>
+                <button class="calendar-close-btn" id="calendarClose" aria-label="关闭日历">✕</button>
             </div>
             <div class="calendar-body">
                 <div class="calendar-weekdays">
@@ -1737,7 +1745,7 @@
             <div class="calendar-footer">
                 <div class="settings-section">
                     <div class="settings-title">作业</div>
-                    <input class="text-input" id="assignmentNameInput" placeholder="作业名称">
+                    <input class="text-input" id="assignmentNameInput" placeholder="作业名称" aria-label="作业名称">
                     <div class="btn-group" style="margin-top: 8px;">
                         <button class="btn btn-primary" id="saveAssignmentName">保存名称</button>
                         <button class="btn" id="createAssignmentBtn">＋ 新建该日作业</button>
@@ -1781,12 +1789,12 @@
                         <div class="student-number" id="modalStudentId">学号</div>
                     </div>
                 </div>
-                <button class="modal-close" id="closeModal">✕</button>
+                <button class="modal-close" id="closeModal" aria-label="关闭评分弹窗">✕</button>
             </div>
             
             <div class="score-section">
                 <div class="score-row">
-                    <input type="text" class="score-input" id="scoreInput" placeholder="-" inputmode="none" readonly onfocus="this.removeAttribute('readonly');">
+                    <input type="text" class="score-input" id="scoreInput" placeholder="-" inputmode="none" readonly aria-label="分数输入框" onfocus="this.removeAttribute('readonly');">
                     <button class="score-clear-btn" data-action="clear" title="清空">✕</button>
                 </div>
                 <div class="numpad">
@@ -1829,7 +1837,7 @@
     <div class="settings-panel" id="statsPanel">
         <div class="settings-header">
             <span style="font-size: 18px; font-weight: 600;">统计</span>
-            <button class="icon-btn" id="closeStats">✕</button>
+            <button class="icon-btn" id="closeStats" aria-label="关闭统计面板">✕</button>
         </div>
         <div class="settings-content">
             <div class="stats-grid">
@@ -1852,7 +1860,7 @@
             </div>
             <div class="settings-desc" id="statsAssignmentName" style="margin-top: 12px;">当前作业：-</div>
             <div class="settings-section">
-                <div class="settings-title stats-collapse" id="statsCollapse">
+                <div class="settings-title stats-collapse" id="statsCollapse" role="button" tabindex="0" data-keyboard-click aria-expanded="true" aria-controls="statsCollapseBody">
                     提交明细
                     <span class="collapse-arrow">▼</span>
                 </div>
@@ -1887,7 +1895,7 @@
     <div class="settings-panel" id="dataPanel">
         <div class="settings-header">
             <span style="font-size: 18px; font-weight: 600;">数据导入/导出</span>
-            <button class="icon-btn" id="closeData">✕</button>
+            <button class="icon-btn" id="closeData" aria-label="关闭数据面板">✕</button>
         </div>
         <div class="settings-content">
             <div class="settings-section">
@@ -1916,12 +1924,12 @@
     <div class="settings-panel" id="menuPanel">
         <div class="settings-header">
             <span style="font-size: 18px; font-weight: 600;">菜单</span>
-            <button class="icon-btn" id="closeMenu">✕</button>
+            <button class="icon-btn" id="closeMenu" aria-label="关闭菜单">✕</button>
         </div>
         <div class="settings-content">
             <div class="settings-section">
                 <div class="settings-title">数据</div>
-                <div class="settings-item settings-action-item" id="dataItem">
+                <div class="settings-item settings-action-item" id="dataItem" role="button" tabindex="0" data-keyboard-click aria-label="导入或导出数据">
                     <div class="settings-item-main">
                         <div class="settings-label">导入/导出数据</div>
                         <div class="settings-desc">支持 JSON/CSV 导入与导出</div>
@@ -1937,41 +1945,41 @@
                         <div class="settings-label">完整姓名</div>
                         <div class="settings-desc">显示学生全名和学号</div>
                     </div>
-                    <div class="switch" id="fullnameSwitch"></div>
+                    <div class="switch" id="fullnameSwitch" role="switch" tabindex="0" data-keyboard-click aria-checked="false" aria-label="完整姓名"></div>
                 </div>
                 <div class="settings-item">
                     <div class="settings-item-main">
                         <div class="settings-label">高对比度模式</div>
                         <div class="settings-desc">适应强光环境</div>
                     </div>
-                    <div class="switch" id="contrastSwitch"></div>
+                    <div class="switch" id="contrastSwitch" role="switch" tabindex="0" data-keyboard-click aria-checked="false" aria-label="高对比度模式"></div>
                 </div>
                 <div class="settings-item">
                     <div class="settings-item-main">
                         <div class="settings-label">禁用动画</div>
                         <div class="settings-desc">提升老旧设备性能</div>
                     </div>
-                    <div class="switch" id="animationSwitch"></div>
+                    <div class="switch" id="animationSwitch" role="switch" tabindex="0" data-keyboard-click aria-checked="false" aria-label="禁用动画"></div>
                 </div>
             </div>
 
             <div class="settings-section">
                 <div class="settings-title">更多</div>
-                <div class="settings-item settings-action-item" id="markPendingMissingItem">
+                <div class="settings-item settings-action-item" id="markPendingMissingItem" role="button" tabindex="0" data-keyboard-click aria-label="未登记转未交">
                     <div class="settings-item-main">
                         <div class="settings-label">未登记转未交</div>
                         <div class="settings-desc">一键将当前作业未登记标记为未交</div>
                     </div>
                     <span class="settings-action-badge">执行</span>
                 </div>
-                <div class="settings-item settings-action-item" id="assignmentItem">
+                <div class="settings-item settings-action-item" id="assignmentItem" role="button" tabindex="0" data-keyboard-click aria-label="作业管理">
                     <div class="settings-item-main">
                         <div class="settings-label">作业管理</div>
                         <div class="settings-desc">新增、切换、重命名</div>
                     </div>
                     <span class="settings-nav-indicator" aria-hidden="true">›</span>
                 </div>
-                <div class="settings-item settings-action-item" id="statsItem">
+                <div class="settings-item settings-action-item" id="statsItem" role="button" tabindex="0" data-keyboard-click aria-label="查看统计">
                     <div class="settings-item-main">
                         <div class="settings-label">统计</div>
                         <div class="settings-desc">查看提交统计</div>
@@ -2831,6 +2839,9 @@
                     const item = document.createElement('div');
                     item.className = `assignment-item ${isActive ? 'active' : ''}`.trim();
                     item.dataset.id = assignment.id;
+                    item.setAttribute('role', 'button');
+                    item.tabIndex = 0;
+                    item.setAttribute('aria-current', isActive ? 'true' : 'false');
 
                     const info = document.createElement('div');
                     info.className = 'assignment-item-info';
@@ -3007,6 +3018,15 @@
                     return true;
                 };
                 const onId = (id, eventName, handler, options) => on(byId(id), eventName, handler, options);
+                const bindKeyboardClick = (el) => {
+                    if (!el) return;
+                    on(el, 'keydown', (e) => {
+                        if (e.key !== 'Enter' && e.key !== ' ') return;
+                        e.preventDefault();
+                        el.click();
+                    });
+                };
+                document.querySelectorAll('[data-keyboard-click]').forEach(bindKeyboardClick);
 
                 const closeAllPanels = () => {
                     let closed = false;
@@ -3235,6 +3255,13 @@
                         const current = AppState.getCurrentAssignment();
                         assignmentNameInput.value = current ? current.name : '';
                     }
+                });
+                on(assignmentList, 'keydown', (e) => {
+                    if (e.key !== 'Enter' && e.key !== ' ') return;
+                    const item = e.target.closest('.assignment-item');
+                    if (!item) return;
+                    e.preventDefault();
+                    item.click();
                 });
 
                 // 左按钮：切换完整姓名显示
@@ -3666,6 +3693,7 @@
                     AppState.data.settings.showFullname = !AppState.data.settings.showFullname;
                     DataManager.save(AppState.data);
                     e.currentTarget.classList.toggle('on', AppState.data.settings.showFullname);
+                    this.updateSwitches();
                     UI.renderGrid();
                 });
 
@@ -3721,14 +3749,16 @@
                     AppState.data.settings.highContrast = !AppState.data.settings.highContrast;
                     DataManager.save(AppState.data);
                     AppState.applySettings();
-                    e.target.classList.toggle('on', AppState.data.settings.highContrast);
+                    e.currentTarget.classList.toggle('on', AppState.data.settings.highContrast);
+                    this.updateSwitches();
                 });
 
                 onId('animationSwitch', 'click', (e) => {
                     AppState.data.settings.noAnimation = !AppState.data.settings.noAnimation;
                     DataManager.save(AppState.data);
                     AppState.applySettings();
-                    e.target.classList.toggle('on', AppState.data.settings.noAnimation);
+                    e.currentTarget.classList.toggle('on', AppState.data.settings.noAnimation);
+                    this.updateSwitches();
                 });
 
                 // 重置数据
@@ -3757,6 +3787,7 @@
                     if (!header || !body) return;
                     const isCollapsed = body.classList.toggle('collapsed');
                     header.classList.toggle('collapsed', isCollapsed);
+                    header.setAttribute('aria-expanded', String(!isCollapsed));
                 });
 
                 on(applyHistoryRange, 'click', () => {
@@ -3853,6 +3884,8 @@
                     UI.showToast('已复制到剪贴板');
                 });
 
+                this.updateSwitches();
+
                 // 键盘快捷键
                 document.addEventListener('keydown', (e) => {
                     if (e.key === 'Escape') {
@@ -3877,9 +3910,18 @@
                 const fullnameSwitch = document.getElementById('fullnameSwitch');
                 const contrastSwitch = document.getElementById('contrastSwitch');
                 const animationSwitch = document.getElementById('animationSwitch');
-                if (fullnameSwitch) fullnameSwitch.classList.toggle('on', AppState.data.settings.showFullname);
-                if (contrastSwitch) contrastSwitch.classList.toggle('on', AppState.data.settings.highContrast);
-                if (animationSwitch) animationSwitch.classList.toggle('on', AppState.data.settings.noAnimation);
+                if (fullnameSwitch) {
+                    fullnameSwitch.classList.toggle('on', AppState.data.settings.showFullname);
+                    fullnameSwitch.setAttribute('aria-checked', String(!!AppState.data.settings.showFullname));
+                }
+                if (contrastSwitch) {
+                    contrastSwitch.classList.toggle('on', AppState.data.settings.highContrast);
+                    contrastSwitch.setAttribute('aria-checked', String(!!AppState.data.settings.highContrast));
+                }
+                if (animationSwitch) {
+                    animationSwitch.classList.toggle('on', AppState.data.settings.noAnimation);
+                    animationSwitch.setAttribute('aria-checked', String(!!AppState.data.settings.noAnimation));
+                }
             }
         };
 
