@@ -2083,8 +2083,10 @@
             save(data) {
                 try {
                     localStorage.setItem(this.STORAGE_KEY, JSON.stringify(data));
+                    return true;
                 } catch (e) {
                     console.error('保存数据失败:', e);
+                    return false;
                 }
             },
 
@@ -2187,88 +2189,256 @@
                 return map[normalized] || 'pending';
             },
 
-            import(jsonStr) {
+            BACKUP_KEY_PREFIX: 'psa_backup_v2_',
+            BACKUP_INDEX_KEY: 'psa_backup_v2_index',
+            MAX_BACKUPS: 10,
+
+            sanitizeText(value, maxLen = 64) {
+                if (value === null || value === undefined) return '';
+                return String(value).trim().replace(/\s+/g, ' ').slice(0, maxLen);
+            },
+
+            sanitizeStudentId(value, fallback) {
+                const text = this.sanitizeText(value, 32);
+                return text || this.sanitizeText(fallback, 32);
+            },
+
+            buildImportedData(students, records = {}) {
+                const today = getLocalDateString(new Date());
+                const assignment = this.createAssignment(today, 1);
+                return {
+                    ...this.getDefaultData(),
+                    students,
+                    assignments: [assignment],
+                    records: { [assignment.id]: records }
+                };
+            },
+
+            parseJsonImport(rawText) {
                 try {
-                    const data = JSON.parse(jsonStr);
-                    if (data.students && Array.isArray(data.students) && Array.isArray(data.assignments) && data.records && typeof data.records === 'object') {
-                        this.save(data);
-                        return true;
+                    const data = JSON.parse(rawText);
+                    if (!data || typeof data !== 'object') return null;
+                    if (!Array.isArray(data.students) || !Array.isArray(data.assignments) || !data.records || typeof data.records !== 'object') {
+                        return null;
                     }
-                } catch (e) {
-                    // 尝试解析为 CSV
-                    const csvRows = this.parseCsv(jsonStr);
-                    if (csvRows.length > 0) {
-                        const header = csvRows[0].map(col => col.trim());
-                        const hasHeader = header.some(col => ['id', '学号', '姓名', 'name', 'status', 'score', '状态', '分数'].includes(col.toLowerCase()));
-                        const dataRows = hasHeader ? csvRows.slice(1) : csvRows;
-                        const headerMap = {};
-                        if (hasHeader) {
-                            header.forEach((col, index) => {
-                                const key = col.trim().toLowerCase();
-                                headerMap[key] = index;
+
+                    const students = data.students
+                        .map((s, i) => ({
+                            id: this.sanitizeStudentId(s && s.id, String(i + 1).padStart(2, '0')),
+                            name: this.sanitizeText(s && s.name, 32) || `学生${String(i + 1).padStart(2, '0')}`
+                        }))
+                        .filter(s => s.id && s.name);
+
+                    const assignments = data.assignments
+                        .map((a, i) => {
+                            const date = this.sanitizeText(a && a.date, 10);
+                            if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return null;
+                            return {
+                                id: this.sanitizeText(a && a.id, 48) || this.generateAssignmentId(),
+                                name: this.sanitizeText(a && a.name, 64) || this.formatAssignmentName(date, i + 1),
+                                date,
+                                order: Number.isFinite(Number(a && a.order)) ? Number(a.order) : i + 1,
+                                createdAt: Number.isFinite(Number(a && a.createdAt)) ? Number(a.createdAt) : Date.now()
+                            };
+                        })
+                        .filter(Boolean);
+
+                    if (students.length === 0 || assignments.length === 0) return null;
+
+                    const normalizedRecords = {};
+                    assignments.forEach(assignment => {
+                        const source = data.records[assignment.id];
+                        const assignmentRecords = {};
+                        if (source && typeof source === 'object') {
+                            Object.keys(source).forEach(studentId => {
+                                const item = source[studentId] || {};
+                                const status = this.parseStatusValue(item.status);
+                                const score = item.score === null || item.score === undefined || item.score === ''
+                                    ? null
+                                    : Number(item.score);
+                                assignmentRecords[String(studentId)] = {
+                                    status,
+                                    score: Number.isFinite(score) ? score : null
+                                };
                             });
                         }
-                        const students = [];
-                        const records = {};
-                        dataRows.forEach((row, i) => {
-                            const rawId = hasHeader ? row[headerMap.id ?? headerMap['学号'] ?? -1] : (row.length > 1 ? row[0] : '');
-                            const rawName = hasHeader ? row[headerMap.name ?? headerMap['姓名'] ?? 1] : (row.length > 1 ? row[1] : row[0]);
-                            const id = rawId;
-                            const name = rawName;
-                            const safeId = id ? String(id).trim() : String(i + 1).padStart(2, '0');
-                            const safeName = name ? String(name).trim() : String(id || '').trim() || `学生${safeId}`;
-                            students.push({ id: safeId, name: safeName });
+                        normalizedRecords[assignment.id] = assignmentRecords;
+                    });
 
-                            if (hasHeader && (headerMap.status !== undefined || headerMap.score !== undefined || headerMap['状态'] !== undefined || headerMap['分数'] !== undefined)) {
-                                const statusValue = row[headerMap.status ?? headerMap['状态'] ?? -1];
-                                const scoreValue = row[headerMap.score ?? headerMap['分数'] ?? -1];
-                                const status = this.parseStatusValue(statusValue);
-                                const score = scoreValue === undefined || scoreValue === '' ? null : parseFloat(scoreValue);
-                                if (!records[safeId]) {
-                                    records[safeId] = {};
-                                }
-                                records[safeId] = {
-                                    status,
-                                    score: isNaN(score) ? null : score
-                                };
-                            }
-                        });
-                        if (students.length > 0) {
-                            const today = getLocalDateString(new Date());
-                            const assignment = this.createAssignment(today, 1);
-                            const newData = {
-                                ...this.getDefaultData(),
-                                students,
-                                assignments: [assignment],
-                                records: { [assignment.id]: records }
-                            };
-                            this.save(newData);
-                            return true;
-                        }
-                    }
-                    // 尝试解析为纯学生名单
-                    const lines = jsonStr.trim().split('\n').filter(l => l.trim());
-                    if (lines.length > 0) {
-                        const students = lines.map((line, i) => {
-                            const parts = line.trim().split(/[\s,，]+/);
-                            if (parts.length >= 2) {
-                                return { id: parts[0], name: parts[1] };
-                            }
-                            return { id: String(i + 1).padStart(2, '0'), name: line.trim() };
-                        });
-                        const today = getLocalDateString(new Date());
-                        const assignment = this.createAssignment(today, 1);
-                        const newData = {
-                            ...this.getDefaultData(),
-                            students,
-                            assignments: [assignment],
-                            records: { [assignment.id]: {} }
-                        };
-                        this.save(newData);
-                        return true;
-                    }
+                    const defaults = this.getDefaultData();
+                    return {
+                        ...defaults,
+                        ...data,
+                        students,
+                        assignments,
+                        records: normalizedRecords,
+                        settings: { ...defaults.settings, ...(data.settings || {}) },
+                        version: '2.0.0'
+                    };
+                } catch (e) {
+                    return null;
                 }
-                return false;
+            },
+
+            parseCsvImport(rawText) {
+                const csvRows = this.parseCsv(rawText);
+                if (csvRows.length < 2) return null;
+                if (!csvRows.some(row => row.length >= 2)) return null;
+
+                const header = csvRows[0].map(col => col.trim());
+                const knownHeaders = ['id', '学号', '姓名', 'name', 'status', 'score', '状态', '分数'];
+                const hasHeader = header.some(col => knownHeaders.includes(col.toLowerCase()));
+                const dataRows = hasHeader ? csvRows.slice(1) : csvRows;
+                if (dataRows.length === 0) return null;
+
+                const headerMap = {};
+                if (hasHeader) {
+                    header.forEach((col, index) => {
+                        headerMap[col.trim().toLowerCase()] = index;
+                    });
+                }
+
+                const students = [];
+                const records = {};
+                dataRows.forEach((row, i) => {
+                    if (!row || row.length === 0) return;
+
+                    const rawId = hasHeader ? row[headerMap.id ?? headerMap['学号'] ?? -1] : (row.length > 1 ? row[0] : '');
+                    const rawName = hasHeader ? row[headerMap.name ?? headerMap['姓名'] ?? 1] : (row.length > 1 ? row[1] : row[0]);
+
+                    const safeId = this.sanitizeStudentId(rawId, String(i + 1).padStart(2, '0'));
+                    const safeName = this.sanitizeText(rawName, 32) || this.sanitizeText(rawId, 32) || `学生${safeId}`;
+                    if (!safeName) return;
+
+                    students.push({ id: safeId, name: safeName });
+
+                    const statusIndex = headerMap.status ?? headerMap['状态'];
+                    const scoreIndex = headerMap.score ?? headerMap['分数'];
+                    if (hasHeader && (statusIndex !== undefined || scoreIndex !== undefined)) {
+                        const statusValue = statusIndex !== undefined ? row[statusIndex] : '';
+                        const scoreValue = scoreIndex !== undefined ? row[scoreIndex] : '';
+                        const status = this.parseStatusValue(statusValue);
+                        const score = scoreValue === undefined || scoreValue === '' ? null : Number(scoreValue);
+                        records[safeId] = {
+                            status,
+                            score: Number.isFinite(score) ? score : null
+                        };
+                    }
+                });
+
+                if (students.length === 0) return null;
+                return this.buildImportedData(students, records);
+            },
+
+            parseStudentListImport(rawText) {
+                const lines = rawText.split('\n').map(line => line.trim()).filter(Boolean);
+                if (lines.length < 3) return null;
+                if (lines.some(line => /[{}\[\]:]/.test(line))) return null;
+
+                const students = lines.map((line, i) => {
+                    const parts = line.split(/[\s,，]+/).filter(Boolean);
+                    if (parts.length >= 2) {
+                        const id = this.sanitizeStudentId(parts[0], String(i + 1).padStart(2, '0'));
+                        const name = this.sanitizeText(parts.slice(1).join(' '), 32) || `学生${id}`;
+                        return { id, name };
+                    }
+                    const id = String(i + 1).padStart(2, '0');
+                    const name = this.sanitizeText(line, 32);
+                    return { id, name };
+                }).filter(s => s.name);
+
+                if (students.length < 3) return null;
+                return this.buildImportedData(students, {});
+            },
+
+            previewImport(rawText) {
+                const text = String(rawText || '').trim();
+                if (!text) {
+                    return { ok: false, error: '导入内容为空' };
+                }
+
+                const jsonData = this.parseJsonImport(text);
+                if (jsonData) {
+                    return {
+                        ok: true,
+                        type: 'json',
+                        students: jsonData.students.length,
+                        assignments: jsonData.assignments.length,
+                        data: jsonData
+                    };
+                }
+
+                const csvData = this.parseCsvImport(text);
+                if (csvData) {
+                    return {
+                        ok: true,
+                        type: 'csv',
+                        students: csvData.students.length,
+                        assignments: csvData.assignments.length,
+                        data: csvData
+                    };
+                }
+
+                const listData = this.parseStudentListImport(text);
+                if (listData) {
+                    return {
+                        ok: true,
+                        type: 'list',
+                        students: listData.students.length,
+                        assignments: listData.assignments.length,
+                        data: listData
+                    };
+                }
+
+                return { ok: false, error: '未识别为有效 JSON/CSV/学生名单（名单至少 3 行）' };
+            },
+
+            applyImport(preview) {
+                if (!preview || !preview.ok || !preview.data) {
+                    return { ok: false, error: '导入预检失败' };
+                }
+                const saved = this.save(preview.data);
+                if (!saved) {
+                    return { ok: false, error: '写入本地存储失败' };
+                }
+                return { ok: true };
+            },
+
+            backupCurrentData() {
+                try {
+                    const snapshot = localStorage.getItem(this.STORAGE_KEY);
+                    if (!snapshot) return null;
+
+                    const key = `${this.BACKUP_KEY_PREFIX}${Date.now()}`;
+                    localStorage.setItem(key, snapshot);
+
+                    const rawIndex = localStorage.getItem(this.BACKUP_INDEX_KEY);
+                    const keys = Array.isArray(JSON.parse(rawIndex || '[]')) ? JSON.parse(rawIndex || '[]') : [];
+                    keys.unshift(key);
+                    const keep = keys.slice(0, this.MAX_BACKUPS);
+                    localStorage.setItem(this.BACKUP_INDEX_KEY, JSON.stringify(keep));
+
+                    keys.slice(this.MAX_BACKUPS).forEach(oldKey => {
+                        localStorage.removeItem(oldKey);
+                    });
+                    return key;
+                } catch (e) {
+                    console.error('创建备份失败:', e);
+                    return null;
+                }
+            },
+
+            restoreBackup(backupKey) {
+                if (!backupKey) return false;
+                try {
+                    const snapshot = localStorage.getItem(backupKey);
+                    if (!snapshot) return false;
+                    localStorage.setItem(this.STORAGE_KEY, snapshot);
+                    return true;
+                } catch (e) {
+                    console.error('恢复备份失败:', e);
+                    return false;
+                }
             },
 
             resetRecords() {
@@ -2489,6 +2659,13 @@
 
         // ============ UI 渲染 ============
         const UI = {
+            clearElement(el) {
+                if (!el) return;
+                while (el.firstChild) {
+                    el.removeChild(el.firstChild);
+                }
+            },
+
             renderGrid() {
                 const grid = document.getElementById('studentGrid');
                 const tip = document.getElementById('noAssignmentTip');
@@ -2503,37 +2680,70 @@
                 if (tip) {
                     tip.classList.toggle('show', !hasAssignment);
                 }
-                
-                grid.innerHTML = students.map(student => {
+
+                this.clearElement(grid);
+                const fragment = document.createDocumentFragment();
+                students.forEach(student => {
                     const record = AppState.getStudentRecord(student.id);
                     const statusClass = record.status === 'submitted' ? 'submitted' : 
                                        record.status === 'late' ? 'late' : 
                                        record.status === 'missing' ? 'missing' : '';
                     const selectedClass = AppState.bulkMode && AppState.bulkSelectedIds.has(student.id) ? 'selected' : '';
-                    
+
+                    const card = document.createElement('div');
+                    card.className = `student-card ${statusClass} ${selectedClass}`.trim();
+                    card.dataset.id = student.id;
+
                     if (showFullname) {
-                        return `
-                            <div class="student-card ${statusClass} ${selectedClass}" data-id="${student.id}">
-                                <div class="fullname-avatar">${student.name[0]}</div>
-                                <div class="fullname-info">
-                                    <div class="fullname-name">${student.name}</div>
-                                    <div class="fullname-id">${student.id}号</div>
-                                </div>
-                                ${record.score !== null && record.score !== undefined ? 
-                                    `<div class="fullname-score">${record.score}</div>` : ''}
-                            </div>
-                        `;
+                        const avatar = document.createElement('div');
+                        avatar.className = 'fullname-avatar';
+                        avatar.textContent = (student.name && student.name[0]) ? student.name[0] : '?';
+
+                        const info = document.createElement('div');
+                        info.className = 'fullname-info';
+
+                        const nameEl = document.createElement('div');
+                        nameEl.className = 'fullname-name';
+                        nameEl.textContent = student.name || '';
+
+                        const idEl = document.createElement('div');
+                        idEl.className = 'fullname-id';
+                        idEl.textContent = `${student.id}号`;
+
+                        info.appendChild(nameEl);
+                        info.appendChild(idEl);
+                        card.appendChild(avatar);
+                        card.appendChild(info);
+
+                        if (record.score !== null && record.score !== undefined) {
+                            const scoreEl = document.createElement('div');
+                            scoreEl.className = 'fullname-score';
+                            scoreEl.textContent = String(record.score);
+                            card.appendChild(scoreEl);
+                        }
                     } else {
-                        return `
-                            <div class="student-card ${statusClass} ${selectedClass}" data-id="${student.id}">
-                                <div class="compact-avatar">${student.name[0]}</div>
-                                <div class="compact-id">${student.id}</div>
-                                ${record.score !== null && record.score !== undefined ? 
-                                    `<div class="compact-score">${record.score}</div>` : ''}
-                            </div>
-                        `;
+                        const avatar = document.createElement('div');
+                        avatar.className = 'compact-avatar';
+                        avatar.textContent = (student.name && student.name[0]) ? student.name[0] : '?';
+
+                        const idEl = document.createElement('div');
+                        idEl.className = 'compact-id';
+                        idEl.textContent = student.id || '';
+
+                        card.appendChild(avatar);
+                        card.appendChild(idEl);
+
+                        if (record.score !== null && record.score !== undefined) {
+                            const scoreEl = document.createElement('div');
+                            scoreEl.className = 'compact-score';
+                            scoreEl.textContent = String(record.score);
+                            card.appendChild(scoreEl);
+                        }
                     }
-                }).join('');
+
+                    fragment.appendChild(card);
+                });
+                grid.appendChild(fragment);
 
                 this.updateProgress();
                 this.updateBulkBar();
@@ -2606,22 +2816,46 @@
                 const list = document.getElementById('assignmentList');
                 if (!list) return;
                 const assignments = AppState.getAssignmentsForDate(AppState.currentDate);
+                this.clearElement(list);
                 if (assignments.length === 0) {
-                    list.innerHTML = `<div class="settings-desc">该日期暂无作业，点击上方按钮新建</div>`;
+                    const empty = document.createElement('div');
+                    empty.className = 'settings-desc';
+                    empty.textContent = '该日期暂无作业，点击上方按钮新建';
+                    list.appendChild(empty);
                     return;
                 }
-                list.innerHTML = assignments.map(assignment => {
+                const fragment = document.createDocumentFragment();
+                assignments.forEach(assignment => {
                     const isActive = assignment.id === AppState.currentAssignmentId;
-                    return `
-                        <div class="assignment-item ${isActive ? 'active' : ''}" data-id="${assignment.id}">
-                            <div class="assignment-item-info">
-                                <div class="assignment-item-name" title="${assignment.name}">${assignment.name}</div>
-                                <div class="assignment-item-meta">${assignment.date} · 第${assignment.order}项</div>
-                            </div>
-                            <span style="font-size: 14px; color: var(--text-secondary);">切换</span>
-                        </div>
-                    `;
-                }).join('');
+
+                    const item = document.createElement('div');
+                    item.className = `assignment-item ${isActive ? 'active' : ''}`.trim();
+                    item.dataset.id = assignment.id;
+
+                    const info = document.createElement('div');
+                    info.className = 'assignment-item-info';
+
+                    const nameEl = document.createElement('div');
+                    nameEl.className = 'assignment-item-name';
+                    nameEl.textContent = assignment.name || '';
+                    nameEl.title = assignment.name || '';
+
+                    const metaEl = document.createElement('div');
+                    metaEl.className = 'assignment-item-meta';
+                    metaEl.textContent = `${assignment.date} · 第${assignment.order}项`;
+
+                    const action = document.createElement('span');
+                    action.style.fontSize = '14px';
+                    action.style.color = 'var(--text-secondary)';
+                    action.textContent = '切换';
+
+                    info.appendChild(nameEl);
+                    info.appendChild(metaEl);
+                    item.appendChild(info);
+                    item.appendChild(action);
+                    fragment.appendChild(item);
+                });
+                list.appendChild(fragment);
             },
 
             showToast(message) {
@@ -2682,37 +2916,82 @@
                 if (list) {
                     const students = AppState.data.students;
                     const assignments = AppState.getSortedAssignments().slice(0, historyCount);
+                    this.clearElement(list);
+                    const fragment = document.createDocumentFragment();
 
-                    list.innerHTML = students.map(student => {
-                        const dots = assignments.map(assignment => {
+                    students.forEach(student => {
+                        const item = document.createElement('div');
+                        item.className = 'stats-list-item';
+
+                        const info = document.createElement('div');
+                        const nameEl = document.createElement('div');
+                        nameEl.className = 'stats-list-name';
+                        nameEl.textContent = student.name || '';
+
+                        const idEl = document.createElement('div');
+                        idEl.className = 'stats-list-sub';
+                        idEl.textContent = `${student.id}号`;
+
+                        info.appendChild(nameEl);
+                        info.appendChild(idEl);
+
+                        const dotsEl = document.createElement('div');
+                        dotsEl.className = 'stats-dots';
+
+                        assignments.forEach(assignment => {
                             const records = AppState.data.records[assignment.id] || {};
                             const record = records[student.id] || { status: 'pending' };
                             const status = record.status || 'pending';
-                            return `<span class="stats-dot ${status}" data-title="${assignment.name}"></span>`;
-                        }).join('');
-                        return `
-                            <div class="stats-list-item">
-                                <div>
-                                    <div class="stats-list-name">${student.name}</div>
-                                    <div class="stats-list-sub">${student.id}号</div>
-                                </div>
-                                <div class="stats-dots">${dots}</div>
-                            </div>
-                        `;
-                    }).join('');
+                            const dot = document.createElement('span');
+                            dot.className = `stats-dot ${status}`;
+                            dot.dataset.title = assignment.name || '';
+                            dotsEl.appendChild(dot);
+                        });
+
+                        item.appendChild(info);
+                        item.appendChild(dotsEl);
+                        fragment.appendChild(item);
+                    });
+                    list.appendChild(fragment);
                 }
 
                 // 渲染历史图表
                 const history = AppState.getHistoryStats(historyCount);
                 const chart = document.getElementById('historyChart');
-                chart.innerHTML = history.map(h => `
-                    <div style="display: flex; flex-direction: column; align-items: center; flex: 1;">
-                        <div style="height: ${h.rate * 1.5}px; width: 30px; background: var(--primary); border-radius: 4px 4px 0 0; opacity: 0.8;"></div>
-                        <div style="font-size: 10px; margin-top: 4px; color: var(--text-secondary);">${h.assignment.name.length > 6 ? h.assignment.name.slice(0, 6) + '…' : h.assignment.name}</div>
-                        <div style="font-size: 9px; color: var(--text-secondary);">${h.assignment.date.slice(5).replace('-', '/')}</div>
-                        <div style="font-size: 11px; font-weight: 600;">${h.rate}%</div>
-                    </div>
-                `).join('');
+                if (!chart) return;
+                this.clearElement(chart);
+                const chartFragment = document.createDocumentFragment();
+                history.forEach(h => {
+                    const column = document.createElement('div');
+                    column.style.cssText = 'display: flex; flex-direction: column; align-items: center; flex: 1;';
+
+                    const bar = document.createElement('div');
+                    bar.style.height = `${h.rate * 1.5}px`;
+                    bar.style.width = '30px';
+                    bar.style.background = 'var(--primary)';
+                    bar.style.borderRadius = '4px 4px 0 0';
+                    bar.style.opacity = '0.8';
+
+                    const name = document.createElement('div');
+                    name.style.cssText = 'font-size: 10px; margin-top: 4px; color: var(--text-secondary);';
+                    const assignmentName = h.assignment.name || '';
+                    name.textContent = assignmentName.length > 6 ? `${assignmentName.slice(0, 6)}…` : assignmentName;
+
+                    const date = document.createElement('div');
+                    date.style.cssText = 'font-size: 9px; color: var(--text-secondary);';
+                    date.textContent = (h.assignment.date || '').slice(5).replace('-', '/');
+
+                    const rate = document.createElement('div');
+                    rate.style.cssText = 'font-size: 11px; font-weight: 600;';
+                    rate.textContent = `${h.rate}%`;
+
+                    column.appendChild(bar);
+                    column.appendChild(name);
+                    column.appendChild(date);
+                    column.appendChild(rate);
+                    chartFragment.appendChild(column);
+                });
+                chart.appendChild(chartFragment);
             }
         };
 
@@ -3489,7 +3768,30 @@
 
                 document.getElementById('confirmImport').addEventListener('click', () => {
                     const text = document.getElementById('importText').value;
-                    if (DataManager.import(text)) {
+                    const preview = DataManager.previewImport(text);
+                    if (!preview.ok) {
+                        UI.showToast(preview.error || '导入失败，请检查数据格式');
+                        return;
+                    }
+
+                    const typeMap = { json: 'JSON', csv: 'CSV', list: '学生名单' };
+                    const currentAssignments = Array.isArray(AppState.data.assignments) ? AppState.data.assignments.length : 0;
+                    const confirmMessage = [
+                        `识别类型：${typeMap[preview.type] || preview.type}`,
+                        `学生数：${preview.students}`,
+                        `作业数：${preview.assignments}`,
+                        `将覆盖当前本地数据（当前作业 ${currentAssignments} 项）`,
+                        '是否继续导入？'
+                    ].join('\n');
+
+                    if (!confirm(confirmMessage)) {
+                        return;
+                    }
+
+                    const backupKey = DataManager.backupCurrentData();
+                    const result = DataManager.applyImport(preview);
+
+                    if (result.ok) {
                         AppState.data = DataManager.load();
                         const latest = AppState.getSortedAssignments()[0];
                         if (latest) {
@@ -3501,10 +3803,11 @@
                         }
                         updateDateTrigger();
                         UI.renderGrid();
-                        UI.showToast('导入成功');
+                        UI.showToast(backupKey ? `导入成功，已备份 ${backupKey}` : '导入成功');
                         document.getElementById('dataPanel').classList.remove('show');
                     } else {
-                        UI.showToast('导入失败，请检查数据格式');
+                        const restored = DataManager.restoreBackup(backupKey);
+                        UI.showToast(restored ? '导入失败，已自动回滚' : '导入失败，且回滚失败');
                     }
                 });
 
