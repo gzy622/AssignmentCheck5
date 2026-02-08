@@ -3041,6 +3041,43 @@
                     UI.hideScoreModal();
                     return closed;
                 };
+                const ensureCurrentAssignment = () => {
+                    if (AppState.currentAssignmentId) return true;
+                    UI.showToast(NO_ASSIGNMENT_MSG);
+                    return false;
+                };
+                const parseScore = (rawValue) => {
+                    const value = String(rawValue || '').trim();
+                    const score = value === '' ? null : parseFloat(value);
+                    if (score !== null && (isNaN(score) || score < 0 || score > 100)) {
+                        return { ok: false, score: null };
+                    }
+                    return { ok: true, score };
+                };
+                const saveSubmittedForSelected = (rawValue, closeModal = true) => {
+                    if (!AppState.selectedStudent) return false;
+                    if (!ensureCurrentAssignment()) return false;
+                    const parsed = parseScore(rawValue);
+                    if (!parsed.ok) {
+                        UI.showToast(SCORE_RANGE_MSG);
+                        return false;
+                    }
+                    const ok = AppState.setStudentRecord(AppState.selectedStudent.id, { status: 'submitted', score: parsed.score });
+                    if (!ok) {
+                        UI.showToast(NO_ASSIGNMENT_MSG);
+                        return false;
+                    }
+                    UI.renderGrid();
+                    UI.showToast(parsed.score !== null ? `已登记: 已交 ${parsed.score}分` : '已登记: 已交');
+                    if (closeModal) UI.hideScoreModal();
+                    return true;
+                };
+                const toggleSetting = (key, afterToggle) => {
+                    AppState.data.settings[key] = !AppState.data.settings[key];
+                    DataManager.save(AppState.data);
+                    if (afterToggle) afterToggle();
+                    this.updateSwitches();
+                };
 
                 // 处理返回键：优先关闭面板；主界面双击返回退出
                 history.pushState({ psa: true }, '');
@@ -3266,17 +3303,14 @@
 
                 // 左按钮：切换完整姓名显示
                 onId('toggleViewMode', 'click', () => {
-                    AppState.data.settings.showFullname = !AppState.data.settings.showFullname;
-                    DataManager.save(AppState.data);
-                    UI.renderGrid();
+                    toggleSetting('showFullname', () => {
+                        UI.renderGrid();
+                    });
                 });
 
                 // 批量选择
                 onId('toggleBulk', 'click', () => {
-                    if (!AppState.currentAssignmentId) {
-                        UI.showToast('该日期暂无作业，请先新建作业');
-                        return;
-                    }
+                    if (!ensureCurrentAssignment()) return;
                     AppState.setBulkMode(!AppState.bulkMode);
                     UI.renderGrid();
                 });
@@ -3300,10 +3334,7 @@
                 document.querySelectorAll('[data-bulk-status]').forEach(btn => {
                     btn.addEventListener('click', () => {
                         if (!AppState.bulkMode) return;
-                        if (!AppState.currentAssignmentId) {
-                            UI.showToast('该日期暂无作业，请先新建作业');
-                            return;
-                        }
+                        if (!ensureCurrentAssignment()) return;
                         const status = btn.dataset.bulkStatus;
                         const selectedIds = AppState.getSelectedIds();
                         if (selectedIds.length === 0) return;
@@ -3317,20 +3348,14 @@
                             AppState.setStudentRecord(studentId, { ...record, status });
                         });
 
-                        const statusMap = {
-                            submitted: '已交',
-                            late: '迟交',
-                            missing: '未交',
-                            pending: '取消登记'
-                        };
-                        UI.showToast(`已批量更新: ${statusMap[status] || status} (${selectedIds.length}人)`);
+                        const statusText = status === 'pending' ? '取消登记' : (STATUS_TEXT_MAP[status] || status);
+                        UI.showToast(`已批量更新: ${statusText} (${selectedIds.length}人)`);
                         AppState.clearBulkSelection();
                         UI.renderGrid();
                     });
                 });
 
                 // 学生卡片交互 - 点击切换状态，长按打开评分
-                let pressStartTime = 0;
                 let pressCardId = null;
                 let isLongPress = false;
                 let longPressTimer = null;
@@ -3345,12 +3370,7 @@
                         const card = e.target.closest('.student-card');
                         if (!card) return;
                         if (e.pointerType === 'mouse' && e.button !== 0) return;
-                        if (!AppState.currentAssignmentId) {
-                            UI.showToast('该日期暂无作业，请先新建作业');
-                            return;
-                        }
-
-                        pressStartTime = Date.now();
+                        if (!ensureCurrentAssignment()) return;
                         pressCardId = card.dataset.id;
                         isLongPress = false;
                         
@@ -3402,8 +3422,7 @@
                             return;
                         }
 
-                        if (!AppState.currentAssignmentId) {
-                            UI.showToast('该日期暂无作业，请先新建作业');
+                        if (!ensureCurrentAssignment()) {
                             pressCardId = null;
                             return;
                         }
@@ -3415,7 +3434,7 @@
                             const newStatus = record.status === 'submitted' ? 'pending' : 'submitted';
                             const ok = AppState.setStudentRecord(pressCardId, { ...record, status: newStatus });
                             if (!ok) {
-                                UI.showToast('该日期暂无作业，请先新建作业');
+                                UI.showToast(NO_ASSIGNMENT_MSG);
                                 pressCardId = null;
                                 return;
                             }
@@ -3472,74 +3491,63 @@
                 });
 
                 // 状态选择 - 点击后自动保存并关闭弹窗
+                const scoreInput = document.getElementById('scoreInput');
                 document.querySelectorAll('.status-btn').forEach(btn => {
                     btn.addEventListener('click', () => {
                         if (!AppState.selectedStudent) return;
-                        if (!AppState.currentAssignmentId) {
-                            UI.showToast('该日期暂无作业，请先新建作业');
-                            return;
-                        }
-                        
+                        if (!ensureCurrentAssignment()) return;
+
                         const status = btn.dataset.status;
                         const studentId = AppState.selectedStudent.id;
-                        const scoreInput = document.getElementById('scoreInput');
-                        const scoreValue = scoreInput ? scoreInput.value.trim() : '';
-                        const score = scoreValue === '' ? null : parseFloat(scoreValue);
-                        
-                        // 验证分数
-                        if (score !== null && (isNaN(score) || score < 0 || score > 100)) {
-                            UI.showToast('请输入0-100之间的数字');
+                        const parsed = parseScore(scoreInput ? scoreInput.value : '');
+                        if (!parsed.ok) {
+                            UI.showToast(SCORE_RANGE_MSG);
                             return;
                         }
-                        
+
                         if (status === 'pending') {
-                            // 取消登记：删除该学生的记录
                             AppState.clearStudentRecord(studentId);
                             UI.showToast('已取消登记');
                         } else {
-                            // 正常状态更新（包含分数）
-                            const statusMap = { submitted: '已交', late: '迟交', missing: '未交' };
-                            const statusText = statusMap[status] || status;
-                            const ok = AppState.setStudentRecord(studentId, { status, score });
+                            const ok = AppState.setStudentRecord(studentId, { status, score: parsed.score });
                             if (!ok) {
-                                UI.showToast('该日期暂无作业，请先新建作业');
+                                UI.showToast(NO_ASSIGNMENT_MSG);
                                 return;
                             }
-                            UI.showToast(score !== null ? `已登记: ${statusText} ${score}分` : `已登记: ${statusText}`);
+                            const statusText = STATUS_TEXT_MAP[status] || status;
+                            UI.showToast(parsed.score !== null ? `已登记: ${statusText} ${parsed.score}分` : `已登记: ${statusText}`);
                         }
-                        
+
                         UI.renderGrid();
                         UI.hideScoreModal();
                     });
                 });
 
-                // 分数输入
-                const scoreInput = document.getElementById('scoreInput');
                 if (scoreInput) {
                     // 限制输入范围（用于系统输入法输入的情况）
                     scoreInput.addEventListener('input', (e) => {
-                    let value = e.target.value;
-                    
-                    // 只允许数字和小数点
-                    value = value.replace(/[^0-9.]/g, '');
-                    
-                    // 确保只有一个小数点
-                    const parts = value.split('.');
-                    if (parts.length > 2) {
-                        value = parts[0] + '.' + parts.slice(1).join('');
-                    }
-                    
-                    // 限制小数位数为2位
-                    if (parts.length === 2 && parts[1].length > 2) {
-                        value = parseFloat(value).toFixed(2);
-                    }
-                    
-                    // 限制范围 0-100
-                    const numValue = parseFloat(value);
-                    if (isNaN(numValue) || numValue > 100) {
-                        value = '';
-                    }
-                    
+                        let value = e.target.value;
+
+                        // 只允许数字和小数点
+                        value = value.replace(/[^0-9.]/g, '');
+
+                        // 确保只有一个小数点
+                        const parts = value.split('.');
+                        if (parts.length > 2) {
+                            value = parts[0] + '.' + parts.slice(1).join('');
+                        }
+
+                        // 限制小数位数为2位
+                        if (parts.length === 2 && parts[1].length > 2) {
+                            value = parseFloat(value).toFixed(2);
+                        }
+
+                        // 限制范围 0-100
+                        const numValue = parseFloat(value);
+                        if (isNaN(numValue) || numValue > 100) {
+                            value = '';
+                        }
+
                         e.target.value = value;
                     });
 
@@ -3554,87 +3562,46 @@
                     // 数字键盘事件处理
                     document.querySelectorAll('.numpad-btn').forEach(btn => {
                         btn.addEventListener('click', () => {
-                        const action = btn.dataset.action;
-                        let value = scoreInput.value || '';
+                            const action = btn.dataset.action;
+                            let value = scoreInput.value || '';
 
-                        if (action === 'num') {
-                            const num = btn.textContent;
-                            if (value.length < 6) {
-                                if (value === '0' && num !== '0') {
-                                    value = num;
-                                } else if (value !== '0' || num === '.') {
-                                    value += num;
+                            if (action === 'num') {
+                                const num = btn.textContent;
+                                if (value.length < 6) {
+                                    if (value === '0' && num !== '0') {
+                                        value = num;
+                                    } else if (value !== '0' || num === '.') {
+                                        value += num;
+                                    }
                                 }
-                            }
-                        } else if (action === 'decimal') {
-                            if (!value.includes('.')) {
-                                value += value === '' ? '0.' : '.';
-                            }
-                        } else if (action === 'backspace') {
-                            value = value.slice(0, -1);
-                        } else if (action === 'clear') {
-                            value = '';
-                        } else if (action === 'confirm') {
-                            if (value !== '') {
-                                const num = parseFloat(value);
-                                if (num > 100) value = '100';
-                            }
-                            scoreInput.value = value;
-                            // 触发保存逻辑
-                            if (!AppState.selectedStudent) return;
-                            if (!AppState.currentAssignmentId) {
-                                UI.showToast('该日期暂无作业，请先新建作业');
+                            } else if (action === 'decimal') {
+                                if (!value.includes('.')) {
+                                    value += value === '' ? '0.' : '.';
+                                }
+                            } else if (action === 'backspace') {
+                                value = value.slice(0, -1);
+                            } else if (action === 'clear') {
+                                value = '';
+                            } else if (action === 'confirm') {
+                                if (value !== '') {
+                                    const num = parseFloat(value);
+                                    if (num > 100) value = '100';
+                                }
+                                scoreInput.value = value;
+                                saveSubmittedForSelected(scoreInput.value, true);
                                 return;
                             }
-                            const score = value === '' ? null : parseFloat(value);
-                            if (score !== null && (isNaN(score) || score < 0 || score > 100)) {
-                                UI.showToast('请输入0-100之间的数字');
-                                return;
-                            }
-                            const ok = AppState.setStudentRecord(AppState.selectedStudent.id, { status: 'submitted', score });
-                            if (!ok) {
-                                UI.showToast('该日期暂无作业，请先新建作业');
-                                return;
-                            }
-                            UI.renderGrid();
-                            UI.showToast(score !== null ? `已登记: 已交 ${score}分` : '已登记: 已交');
-                            UI.hideScoreModal();
-                            return;
-                        }
 
                             scoreInput.value = value;
                         });
                     });
 
-                // 回车键 - 默认以"已交"状态保存（兼容Windows和Android）
+                    // 回车键 - 默认以"已交"状态保存（兼容Windows和Android）
                     scoreInput.addEventListener('keydown', (e) => {
-                    if (e.key === 'Enter' || e.keyCode === 13) {
+                        if (e.key !== 'Enter' && e.keyCode !== 13) return;
                         e.preventDefault();
-                        if (!AppState.selectedStudent) return;
-                        if (!AppState.currentAssignmentId) {
-                            UI.showToast('该日期暂无作业，请先新建作业');
-                            return;
-                        }
-                        
-                        const value = scoreInput.value.trim();
-                        const score = value === '' ? null : parseFloat(value);
-                        
-                        if (score !== null && (isNaN(score) || score < 0 || score > 100)) {
-                            UI.showToast('请输入0-100之间的数字');
-                            return;
-                        }
-                        
-                        // 默认以"已交"状态保存
-                        const ok = AppState.setStudentRecord(AppState.selectedStudent.id, { status: 'submitted', score });
-                        if (!ok) {
-                            UI.showToast('该日期暂无作业，请先新建作业');
-                            return;
-                        }
-                        UI.renderGrid();
-                        UI.showToast(score !== null ? `已登记: 已交 ${score}分` : '已登记: 已交');
-                        UI.hideScoreModal();
-                    }
-                });
+                        saveSubmittedForSelected(scoreInput.value, true);
+                    });
                 }
 
                 // 主菜单
@@ -3650,11 +3617,9 @@
                 });
 
                 onId('fullnameSwitch', 'click', (e) => {
-                    AppState.data.settings.showFullname = !AppState.data.settings.showFullname;
-                    DataManager.save(AppState.data);
-                    e.currentTarget.classList.toggle('on', AppState.data.settings.showFullname);
-                    this.updateSwitches();
-                    UI.renderGrid();
+                    toggleSetting('showFullname', () => {
+                        UI.renderGrid();
+                    });
                 });
 
                 onId('assignmentItem', 'click', () => {
@@ -3682,17 +3647,14 @@
                 onId('markPendingMissingItem', 'click', () => {
                     const menuPanel = byId('menuPanel');
                     if (menuPanel) menuPanel.classList.remove('show');
-                    if (!AppState.currentAssignmentId) {
-                        UI.showToast('该日期暂无作业，请先新建作业');
-                        return;
-                    }
+                    if (!ensureCurrentAssignment()) return;
                     if (!confirm('将当前作业所有未登记学生标记为未交？')) {
                         return;
                     }
 
                     const changed = AppState.markPendingAsMissingForCurrentAssignment();
                     if (changed < 0) {
-                        UI.showToast('该日期暂无作业，请先新建作业');
+                        UI.showToast(NO_ASSIGNMENT_MSG);
                         return;
                     }
 
@@ -3706,19 +3668,15 @@
 
                 // 开关
                 onId('contrastSwitch', 'click', (e) => {
-                    AppState.data.settings.highContrast = !AppState.data.settings.highContrast;
-                    DataManager.save(AppState.data);
-                    AppState.applySettings();
-                    e.currentTarget.classList.toggle('on', AppState.data.settings.highContrast);
-                    this.updateSwitches();
+                    toggleSetting('highContrast', () => {
+                        AppState.applySettings();
+                    });
                 });
 
                 onId('animationSwitch', 'click', (e) => {
-                    AppState.data.settings.noAnimation = !AppState.data.settings.noAnimation;
-                    DataManager.save(AppState.data);
-                    AppState.applySettings();
-                    e.currentTarget.classList.toggle('on', AppState.data.settings.noAnimation);
-                    this.updateSwitches();
+                    toggleSetting('noAnimation', () => {
+                        AppState.applySettings();
+                    });
                 });
 
                 // 重置数据
@@ -3870,15 +3828,7 @@
                             AppState.setBulkMode(false);
                             UI.renderGrid();
                         }
-                        UI.hideScoreModal();
-                        const menuPanel = byId('menuPanel');
-                        const statsPanel = byId('statsPanel');
-                        const dataPanel = byId('dataPanel');
-                        const calendarPanelEl = byId('calendarPanel');
-                        if (menuPanel) menuPanel.classList.remove('show');
-                        if (statsPanel) statsPanel.classList.remove('show');
-                        if (dataPanel) dataPanel.classList.remove('show');
-                        if (calendarPanelEl) calendarPanelEl.classList.remove('show');
+                        closeAllPanels();
                     }
                 });
             },
