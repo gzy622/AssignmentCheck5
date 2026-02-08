@@ -3013,6 +3013,7 @@
                 let allowNativeBackUntil = 0;
                 const BACK_EXIT_INTERVAL = 1500;
                 const BACK_RELEASE_WINDOW = 800;
+                let backTrapArmed = false;
                 const byId = (id) => document.getElementById(id);
                 const on = (el, eventName, handler, options) => {
                     if (!el) return false;
@@ -3096,20 +3097,28 @@
                     }
                     return handled;
                 };
-                const ensureBackTrap = () => {
-                    const state = window.history.state;
-                    if (!state || !state.__psaBackTrap) {
-                        history.pushState({ __psaBackTrap: true, t: Date.now() }, '');
-                    }
+                const armBackTrap = () => {
+                    if (backTrapArmed) return;
+                    history.pushState({ __psaBackTrap: true, t: Date.now() }, '');
+                    backTrapArmed = true;
+                };
+                const rearmBackTrap = () => {
+                    backTrapArmed = false;
+                    // 在同一事件循环结束后补回拦截条目，兼容部分 Android 浏览器时序
+                    setTimeout(() => {
+                        armBackTrap();
+                    }, 0);
                 };
 
                 // Android 返回键：优先按 ESC 关闭交互层；主界面双击返回才退出
-                ensureBackTrap();
+                armBackTrap();
                 window.addEventListener('pageshow', () => {
                     allowNativeBackUntil = 0;
-                    ensureBackTrap();
+                    armBackTrap();
                 });
                 window.addEventListener('popstate', () => {
+                    // 本次 back 已消费掉一层 trap，需要按分支决定是否补回
+                    backTrapArmed = false;
                     const now = Date.now();
                     if (now < allowNativeBackUntil) {
                         allowNativeBackUntil = 0;
@@ -3119,19 +3128,22 @@
                     const handled = handleEscapeAction();
                     if (handled) {
                         lastBackTime = 0;
-                        ensureBackTrap();
+                        rearmBackTrap();
                         return;
                     }
 
                     if (now - lastBackTime < BACK_EXIT_INTERVAL) {
                         allowNativeBackUntil = now + BACK_RELEASE_WINDOW;
+                        setTimeout(() => {
+                            allowNativeBackUntil = 0;
+                        }, BACK_RELEASE_WINDOW + 100);
                         history.back();
                         return;
                     }
 
                     lastBackTime = now;
                     UI.showToast('再按一次返回退出');
-                    ensureBackTrap();
+                    rearmBackTrap();
                 });
 
                 // 日历面板
