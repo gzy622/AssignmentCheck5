@@ -3010,8 +3010,9 @@
         const Events = {
             init() {
                 let lastBackTime = 0;
-                let allowExit = false;
+                let allowNativeBackUntil = 0;
                 const BACK_EXIT_INTERVAL = 1500;
+                const BACK_RELEASE_WINDOW = 800;
                 const byId = (id) => document.getElementById(id);
                 const on = (el, eventName, handler, options) => {
                     if (!el) return false;
@@ -3095,29 +3096,42 @@
                     }
                     return handled;
                 };
+                const ensureBackTrap = () => {
+                    const state = window.history.state;
+                    if (!state || !state.__psaBackTrap) {
+                        history.pushState({ __psaBackTrap: true, t: Date.now() }, '');
+                    }
+                };
 
                 // Android 返回键：优先按 ESC 关闭交互层；主界面双击返回才退出
-                history.pushState({ psa: true }, '');
+                ensureBackTrap();
+                window.addEventListener('pageshow', () => {
+                    allowNativeBackUntil = 0;
+                    ensureBackTrap();
+                });
                 window.addEventListener('popstate', () => {
-                    if (allowExit) return;
+                    const now = Date.now();
+                    if (now < allowNativeBackUntil) {
+                        allowNativeBackUntil = 0;
+                        return;
+                    }
 
                     const handled = handleEscapeAction();
                     if (handled) {
                         lastBackTime = 0;
-                        history.pushState({ psa: true }, '');
+                        ensureBackTrap();
                         return;
                     }
 
-                    const now = Date.now();
                     if (now - lastBackTime < BACK_EXIT_INTERVAL) {
-                        allowExit = true;
+                        allowNativeBackUntil = now + BACK_RELEASE_WINDOW;
                         history.back();
                         return;
                     }
 
                     lastBackTime = now;
                     UI.showToast('再按一次返回退出');
-                    history.pushState({ psa: true }, '');
+                    ensureBackTrap();
                 });
 
                 // 日历面板
